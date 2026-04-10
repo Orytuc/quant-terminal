@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terminale Backtest Strategie</title>
+    <style>
+        body { font-family: 'Courier New', Courier, monospace; background-color: #050505; color: #d1d5db; margin: 0; padding: 15px; }
+        h2 { color: #8b5cf6; text-align: center; text-transform: uppercase; border-bottom: 2px solid #1f2937; padding-bottom: 10px; font-size: 18px; letter-spacing: 1px; }
+        .card { background-color: #111827; border: 1px solid #1f2937; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        label { display: block; font-size: 11px; color: #9ca3af; margin-top: 10px; text-transform: uppercase; }
+        select, input { width: 100%; background: #000; color: #8b5cf6; border: 1px solid #374151; padding: 10px; font-size: 14px; border-radius: 5px; box-sizing: border-box; margin-top: 5px; font-weight: bold; font-family: 'Courier New'; }
+        button { width: 100%; padding: 15px; margin-top: 15px; border-radius: 5px; border: none; font-size: 16px; font-weight: bold; cursor: pointer; background-color: #7c3aed; color: white; text-transform: uppercase; letter-spacing: 1px; transition: 0.2s; }
+        button:active { background-color: #5b21b6; }
+        
+        /* Area Grafico */
+        .chart-container { width: 100%; height: 250px; background: #000; border: 1px solid #374151; border-radius: 5px; margin-top: 15px; position: relative; overflow: hidden; }
+        canvas { width: 100%; height: 100%; display: block; }
+        
+        /* Statistiche */
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .stat-box { background: #000; border: 1px solid #1f2937; padding: 10px; border-radius: 5px; text-align: center; }
+        .stat-title { font-size: 10px; color: #6b7280; text-transform: uppercase; }
+        .stat-value { font-size: 16px; font-weight: bold; margin-top: 5px; }
+        .good { color: #10b981; }
+        .bad { color: #ef4444; }
+        .neutral { color: #3b82f6; }
+    </style>
+</head>
+<body>
+
+    <h2>📈 Simulatore Schemi di Puntata</h2>
+
+    <div class="card">
+        <label>Seleziona lo Schema (Strategia):</label>
+        <select id="strategy">
+            <option value="flat">Puntata Fissa (Nessuno schema)</option>
+            <option value="martingale">Martingala (Raddoppia se perdi)</option>
+            <option value="paroli">Paroli / Anti-Martingala (Raddoppia se vinci)</option>
+            <option value="dalembert">D'Alembert (+1 unità se perdi, -1 se vinci)</option>
+        </select>
+
+        <div class="grid-2">
+            <div>
+                <label>Capitale Iniziale (€):</label>
+                <input type="number" id="bankroll" value="100">
+            </div>
+            <div>
+                <label>Puntata Base (€):</label>
+                <input type="number" id="baseBet" value="1" step="0.1">
+            </div>
+            <div>
+                <label>Moltiplicatore Obiettivo:</label>
+                <input type="number" id="multiplier" value="1.98" step="0.01">
+            </div>
+            <div>
+                <label>Numero di Round:</label>
+                <input type="number" id="rounds" value="200">
+            </div>
+        </div>
+
+        <button onclick="runSimulation()">Avvia Backtest Visivo</button>
+    </div>
+
+    <div class="card" id="resultsArea" style="display: none;">
+        <h3 style="margin-top: 0; color: #d1d5db; font-size: 14px;">Evoluzione del Portafoglio:</h3>
+        
+        <div class="chart-container">
+            <canvas id="chartCanvas"></canvas>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="stat-title">Capitale Finale</div>
+                <div class="stat-value" id="finalBankroll">--</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-title">Picco Massimo (Max)</div>
+                <div class="stat-value good" id="maxBankroll">--</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-title">Puntata Max Raggiunta</div>
+                <div class="stat-value neutral" id="maxBet">--</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-title">Vittorie / Sconfitte</div>
+                <div class="stat-value" id="winLoss" style="color: #a855f7;">--</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const RTP = 0.97; // Vantaggio banco standard
+
+        function runSimulation() {
+            let bankroll = parseFloat(document.getElementById('bankroll').value);
+            let startBankroll = bankroll;
+            let baseBet = parseFloat(document.getElementById('baseBet').value);
+            let multiplier = parseFloat(document.getElementById('multiplier').value);
+            let numRounds = parseInt(document.getElementById('rounds').value);
+            let strategy = document.getElementById('strategy').value;
+
+            if (bankroll <= 0 || baseBet <= 0 || multiplier <= 1.0 || numRounds <= 0) {
+                return alert("Parametri non validi.");
+            }
+
+            let probWin = RTP / multiplier;
+            if (probWin > 1) probWin = 1;
+
+            let history = [bankroll];
+            let currentBet = baseBet;
+            let maxBank = bankroll;
+            let maxBetPlaced = currentBet;
+            let wins = 0;
+            let losses = 0;
+
+            for (let i = 0; i < numRounds; i++) {
+                if (bankroll < currentBet) {
+                    // Bancarotta: prova a puntare i resti, se 0 si ferma
+                    currentBet = bankroll;
+                    if (bankroll <= 0) break;
+                }
+
+                if (currentBet > maxBetPlaced) maxBetPlaced = currentBet;
+
+                bankroll -= currentBet; // Paga la puntata
+                
+                let isWin = Math.random() < probWin;
+
+                if (isWin) {
+                    wins++;
+                    bankroll += (currentBet * multiplier); // Incassa
+                    
+                    // Gestione schema su Vittoria
+                    if (strategy === 'flat') currentBet = baseBet;
+                    if (strategy === 'martingale') currentBet = baseBet; // Reset su win
+                    if (strategy === 'paroli') currentBet = currentBet * 2; // Raddoppia su win
+                    if (strategy === 'dalembert') currentBet = Math.max(baseBet, currentBet - baseBet);
+                } else {
+                    losses++;
+                    // Gestione schema su Sconfitta
+                    if (strategy === 'flat') currentBet = baseBet;
+                    if (strategy === 'martingale') currentBet = currentBet * 2; // Raddoppia su loss
+                    if (strategy === 'paroli') currentBet = baseBet; // Reset su loss
+                    if (strategy === 'dalembert') currentBet = currentBet + baseBet;
+                }
+
+                if (bankroll > maxBank) maxBank = bankroll;
+                history.push(bankroll);
+            }
+
+            drawChart(history, startBankroll);
+            updateStats(history[history.length - 1], startBankroll, maxBank, maxBetPlaced, wins, losses);
+        }
+
+        function drawChart(data, startVal) {
+            const canvas = document.getElementById('chartCanvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Trova max e min per scalare il grafico
+            let maxVal = Math.max(...data, startVal * 1.5); // Spazio per respirare
+            let minVal = Math.min(...data, 0);
+
+            let range = maxVal - minVal;
+            if (range === 0) range = 1; // Evita div/0
+
+            // Disegna asse di partenza (Break Even Line)
+            let startY = canvas.height - ((startVal - minVal) / range) * canvas.height;
+            ctx.beginPath();
+            ctx.strokeStyle = '#374151'; // Linea grigia
+            ctx.setLineDash([5, 5]);
+            ctx.moveTo(0, startY);
+            ctx.lineTo(canvas.width, startY);
+            ctx.stroke();
+            ctx.setLineDash([]); // Reset
+
+            // Disegna il grafico del portafoglio
+            ctx.beginPath();
+            ctx.strokeStyle = data[data.length-1] >= startVal ? '#10b981' : '#ef4444'; // Verde se in profitto, rosso se in perdita
+            ctx.lineWidth = 2;
+            
+            for (let i = 0; i < data.length; i++) {
+                let x = (i / (data.length - 1)) * canvas.width;
+                let y = canvas.height - ((data[data.length - 1 < i ? data.length - 1 : i] - minVal) / range) * canvas.height;
+                
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            
+            // Riempimento sotto la linea
+            ctx.lineTo(canvas.width, canvas.height);
+            ctx.lineTo(0, canvas.height);
+            ctx.fillStyle = data[data.length-1] >= startVal ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)';
+            ctx.fill();
+        }
+
+        function updateStats(final, start, maxBank, maxBet, w, l) {
+            let finEl = document.getElementById('finalBankroll');
+            finEl.innerText = final.toFixed(2) + " €";
+            finEl.className = "stat-value " + (final >= start ? "good" : "bad");
+
+            document.getElementById('maxBankroll').innerText = maxBank.toFixed(2) + " €";
+            document.getElementById('maxBet').innerText = maxBet.toFixed(2) + " €";
+            document.getElementById('winLoss').innerText = w + " W / " + l + " L";
+
+            document.getElementById('resultsArea').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
