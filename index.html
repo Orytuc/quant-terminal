@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terminale Quant PRO - Advanced Risk Hub</title>
+    <style>
+        body { font-family: 'Courier New', Courier, monospace; background-color: #050505; color: #d1d5db; margin: 0; padding: 15px; }
+        h2 { color: #3b82f6; text-align: center; text-transform: uppercase; border-bottom: 2px solid #1f2937; padding-bottom: 10px; font-size: 18px; letter-spacing: 1px; }
+        .card { background-color: #111827; border: 1px solid #1f2937; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        select, input { width: 100%; background: #000; color: #3b82f6; border: 1px solid #374151; padding: 12px; font-size: 16px; border-radius: 5px; box-sizing: border-box; margin-top: 5px; font-weight: bold; font-family: 'Courier New'; }
+        label { display: block; font-size: 12px; color: #9ca3af; margin-top: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+        button { width: 100%; padding: 15px; margin-top: 15px; border-radius: 5px; border: none; font-size: 16px; font-weight: bold; cursor: pointer; background-color: #2563eb; color: white; text-transform: uppercase; }
+        button:active { background-color: #1d4ed8; }
+        
+        .result-box { background-color: #000; padding: 15px; border-radius: 5px; border-left: 4px solid #3b82f6; margin-top: 15px; border-right: 1px solid #1f2937; border-top: 1px solid #1f2937; border-bottom: 1px solid #1f2937; }
+        .row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dotted #374151; font-size: 14px; }
+        .row:last-child { border-bottom: none; }
+        .good { color: #10b981; font-weight: bold; }
+        .bad { color: #ef4444; font-weight: bold; }
+        .warning { color: #f59e0b; font-weight: bold; }
+        .data-label { color: #9ca3af; }
+        
+        .game-module { display: none; }
+        .active-module { display: block; }
+        
+        .advice-box { background-color: #1f2937; padding: 10px; border-radius: 4px; margin-top: 15px; font-size: 12px; line-height: 1.5; color: #d1d5db; }
+    </style>
+</head>
+<body>
+
+    <h2>🧬 Motore Quantitativo PRO</h2>
+
+    <div class="card">
+        <label>Algoritmo da analizzare:</label>
+        <select id="gameSelector" onchange="cambiaGioco()">
+            <option value="aviator">✈️ Aviator (Varianza & Drawdown)</option>
+            <option value="mines">🐔 Chicken / Mines (Ipergeometrica)</option>
+            <option value="squid">🦑 Squid Game (Decadimento Esponenziale)</option>
+        </select>
+    </div>
+
+    <div id="mod-aviator" class="card game-module active-module">
+        <label>Moltiplicatore Target (es. 3.50):</label>
+        <input type="number" id="avTarget" step="0.01" value="2.00">
+        <button onclick="calcolaAviator()">Esegui Simulazione</button>
+    </div>
+
+    <div id="mod-mines" class="card game-module">
+        <label>Caselle Totali in griglia (es. 25):</label>
+        <input type="number" id="miTotali" value="25">
+        <label>Numero di Trappole Totali (es. 3):</label>
+        <input type="number" id="miTrappole" value="3">
+        <label>Obiettivo: Quanti passi SICURI vuoi fare in totale prima di fermarti?</label>
+        <input type="number" id="miTarget" value="5">
+        <button onclick="calcolaMines()">Calcola Statistica Ipergeometrica</button>
+    </div>
+
+    <div id="mod-squid" class="card game-module">
+        <label>Passi Totali del percorso (es. 5):</label>
+        <input type="number" id="sqPassi" value="5">
+        <label>Scelte totali per passo (es. 2):</label>
+        <input type="number" id="sqScelte" value="2">
+        <label>Scelte sicure per passo (es. 1):</label>
+        <input type="number" id="sqSicure" value="1">
+        <label>Moltiplicatore Premio Finale (es. 30):</label>
+        <input type="number" id="sqPremio" value="30">
+        <button onclick="calcolaSquid()">Calcola Vantaggio Matematico (EV)</button>
+    </div>
+
+    <div class="card" id="areaRisultati" style="display: none;">
+        <h3 style="margin-top: 0; color: #3b82f6; font-size: 15px; border-bottom: 1px solid #1f2937; padding-bottom: 5px;">Output Terminer:</h3>
+        <div class="result-box" id="boxRisultati"></div>
+        <div class="advice-box" id="verdettoFinale"></div>
+    </div>
+
+    <script>
+        const RTP_CASINO = 0.97; // RTP standard 97%
+
+        function cambiaGioco() {
+            document.querySelectorAll('.game-module').forEach(el => el.classList.remove('active-module'));
+            let scelto = document.getElementById('gameSelector').value;
+            document.getElementById('mod-' + scelto).classList.add('active-module');
+            document.getElementById('areaRisultati').style.display = 'none';
+        }
+
+        // --- MATEMATICA AVANZATA (Fattoriale e Coefficiente Binomiale per Mines) ---
+        function fattoriale(n) {
+            if (n === 0 || n === 1) return 1;
+            let result = 1;
+            for (let i = 2; i <= n; i++) result *= i;
+            return result;
+        }
+        function binomiale(n, k) {
+            if (k < 0 || k > n) return 0;
+            if (k === 0 || k === n) return 1;
+            if (k === 1 || k === n - 1) return n;
+            let res = 1;
+            for (let i = 1; i <= k; i++) {
+                res = res * (n - i + 1) / i;
+            }
+            return res;
+        }
+
+        // --- CALCOLO AVIATOR ---
+        function calcolaAviator() {
+            let target = parseFloat(document.getElementById('avTarget').value);
+            if (isNaN(target) || target < 1.01) return alert("Inserisci un moltiplicatore valido.");
+
+            let probWin = (RTP_CASINO / target);
+            if (probWin > 1) probWin = 1;
+            let probLoss = 1 - probWin;
+            
+            // Drawdown quantitativo: probabilità di perdere 5 volte di fila
+            let riskRuin5 = Math.pow(probLoss, 5);
+
+            let html = `
+                <div class="row"><span class="data-label">Successo Netto:</span> <span class="good">${(probWin * 100).toFixed(2)}%</span></div>
+                <div class="row"><span class="data-label">Rischio Crash:</span> <span class="bad">${(probLoss * 100).toFixed(2)}%</span></div>
+                <div class="row"><span class="data-label">Rischio Drawdown (5 perdite di fila):</span> <span class="warning">${(riskRuin5 * 100).toFixed(2)}%</span></div>
+            `;
+            
+            let advice = `<strong>Consiglio di Bankroll Management:</strong> Con un rischio di schianto del ${(probLoss * 100).toFixed(1)}%, hai una probabilità statistica altissima di bruciare capitale rapidamente se non copri la varianza. Non investire più del <strong>${(probWin * 5).toFixed(1)}%</strong> del tuo budget totale in un singolo volo.`;
+            
+            mostra('Aviator', html, advice);
+        }
+
+        // --- CALCOLO MINES / CHICKEN ROAD (Ipergeometrica) ---
+        function calcolaMines() {
+            let tot = parseInt(document.getElementById('miTotali').value);
+            let trap = parseInt(document.getElementById('miTrappole').value);
+            let target = parseInt(document.getElementById('miTarget').value);
+
+            if (target + trap > tot || target < 1) return alert("Dati non validi o matematicamente impossibili.");
+
+            // Distribuzione Ipergeometrica: (Modi per scegliere 'target' celle sicure) / (Modi totali di scegliere 'target' celle)
+            let sicureTotali = tot - trap;
+            let casiFavorevoli = binomiale(sicureTotali, target);
+            let casiTotali = binomiale(tot, target);
+            
+            let probSuccesso = casiFavorevoli / casiTotali;
+            let probRovina = 1 - probSuccesso;
+
+            let html = `
+                <div class="row"><span class="data-label">Sopravvivenza per ${target} passi:</span> <span class="good">${(probSuccesso * 100).toFixed(2)}%</span></div>
+                <div class="row"><span class="data-label">Rischio Globale di trappola:</span> <span class="bad">${(probRovina * 100).toFixed(2)}%</span></div>
+                <div class="row"><span class="data-label">Combinazioni Esatte calcolate:</span> <span style="color:#3b82f6;">${casiTotali}</span></div>
+            `;
+            
+            let advice = `<strong>Analisi Combinatoria:</strong> Il calcolatore non valuta un passo alla volta, ma ha scansionato tutte le ${casiTotali} disposizioni possibili della griglia. Voler fare ${target} passi di fila distrugge il tuo vantaggio matematico, portando il rischio al ${(probRovina * 100).toFixed(2)}%.`;
+            
+            mostra('Mines', html, advice);
+        }
+
+        // --- CALCOLO SQUID GAME (Valore Atteso EV) ---
+        function calcolaSquid() {
+            let passi = parseInt(document.getElementById('sqPassi').value);
+            let scelte = parseInt(document.getElementById('sqScelte').value);
+            let sicure = parseInt(document.getElementById('sqSicure').value);
+            let premio = parseFloat(document.getElementById('sqPremio').value);
+
+            if (sicure >= scelte || passi < 1) return alert("Controlla i dati immessi.");
+
+            let probSingola = sicure / scelte;
+            let probTotale = Math.pow(probSingola, passi);
+            let rischioTotale = 1 - probTotale;
+            
+            // Expected Value formula: (Prob Win * Profit) - (Prob Loss * Risk)
+            // Assumiamo bet = 1 unità
+            let profitWhenWin = premio - 1; 
+            let ev = (probTotale * profitWhenWin) - (rischioTotale * 1);
+
+            let html = `
+                <div class="row"><span class="data-label">Arrivo alla fine:</span> <span class="good">${(probTotale * 100).toFixed(4)}%</span></div>
+                <div class="row"><span class="data-label">Morte lungo il percorso:</span> <span class="bad">${(rischioTotale * 100).toFixed(2)}%</span></div>
+                <div class="row"><span class="data-label">Expected Value (EV) per 1€:</span> <span class="${ev >= 0 ? 'good' : 'bad'}">${ev.toFixed(3)} €</span></div>
+            `;
+            
+            let advice = `<strong>Decadimento Esponenziale ed EV:</strong> La tua probabilità crolla esponenzialmente a ogni passo. L'EV di <span style="color:${ev >= 0 ? '#10b981' : '#ef4444'}">${ev.toFixed(3)}€</span> ti indica che per ogni Euro scommesso, a lungo termine ${ev >= 0 ? 'guadagnerai matematicamente' : 'perderai inesorabilmente'} quella cifra. Se l'EV è negativo, incassare a metà percorso è d'obbligo.`;
+            
+            mostra('Squid Game', html, advice);
+        }
+
+        function mostra(titolo, htmlRighe, testoConsiglio) {
+            document.getElementById('boxRisultati').innerHTML = htmlRighe;
+            document.getElementById('verdettoFinale').innerHTML = testoConsiglio;
+            document.getElementById('areaRisultati').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
