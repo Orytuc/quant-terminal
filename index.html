@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Edge OS | Level 8</title>
+    <style>
+        :root { 
+            --bg: #000000; --panel: #0a0b10; --border: #1f2233; 
+            --accent: #00ffcc; --accent-glow: rgba(0, 255, 204, 0.25);
+            --premium: #ff2a6d; --basic: #5b5f77; --warning: #facc15;
+            --success: #05ffa1; --danger: #ff2a2a; --text: #e2e8f0; 
+        }
+        * { box-sizing: border-box; }
+        body { font-family: 'Consolas', 'Courier New', monospace; background: var(--bg); color: var(--text); margin: 0; padding: 0; user-select: none; overflow-x: hidden; }
+        
+        /* === SPLASH SCREEN === */
+        #splash-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: var(--bg); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.5s ease; }
+        .logo-container { text-align: center; animation: pulse 1.5s infinite alternate; }
+        .logo-icon { font-size: 70px; filter: drop-shadow(0 0 25px var(--accent)); margin-bottom: 10px; }
+        .logo-text { font-size: 36px; font-weight: 900; color: var(--accent); letter-spacing: 5px; margin: 0; text-transform: uppercase; }
+        .logo-sub { color: #888; font-size: 12px; letter-spacing: 8px; margin-top: 5px; text-transform: uppercase; }
+        @keyframes pulse { from { transform: scale(0.95); opacity: 0.8; } to { transform: scale(1.05); opacity: 1; } }
+
+        /* === LAYOUT === */
+        #app { max-width: 650px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; background: var(--panel); border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+        .view { display: none; flex: 1; padding: 25px 20px; animation: slideIn 0.3s ease-out; }
+        .view.active { display: block; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* === UI ELEMENTS === */
+        .header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 15px; border-bottom: 1px solid var(--border); margin-bottom: 25px; }
+        .header h1 { margin: 0; font-size: 20px; color: var(--accent); font-weight: 800; letter-spacing: 2px; }
+        .badge { padding: 5px 10px; border-radius: 4px; font-size: 11px; font-weight: 900; letter-spacing: 1px; }
+        .badge.premium { background: var(--premium); color: #fff; box-shadow: 0 0 12px rgba(255,42,109,0.4); }
+        .badge.basic { background: var(--basic); color: #fff; }
+        
+        .card { background: #050608; border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 8px 20px rgba(0,0,0,0.5); }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; font-size: 11px; color: #8ba0b2; margin-bottom: 8px; text-transform: uppercase; font-weight: bold; letter-spacing: 1px; }
+        input, select { width: 100%; background: #000; color: var(--accent); border: 1px solid #2a2e42; padding: 15px; font-size: 16px; border-radius: 6px; outline: none; font-weight: bold; transition: 0.3s; font-family: 'Consolas', monospace; }
+        input:focus, select:focus { border-color: var(--accent); box-shadow: inset 0 0 10px var(--accent-glow); }
+        
+        button.btn { width: 100%; background: var(--accent); color: #000; border: none; padding: 18px; font-size: 16px; font-weight: 900; border-radius: 6px; cursor: pointer; text-transform: uppercase; letter-spacing: 2px; margin-top: 10px; box-shadow: 0 0 15px var(--accent-glow); transition: 0.2s; }
+        button.btn:active { transform: scale(0.96); }
+        button.btn-back { background: #1a1c29; color: var(--text); border: 1px solid var(--border); width: auto; padding: 10px 15px; font-size: 12px; border-radius: 4px; }
+        
+        /* === LOBBY GRID === */
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .game-btn { background: #090a0f; border: 1px solid var(--border); padding: 25px 10px; border-radius: 8px; text-align: center; cursor: pointer; position: relative; transition: 0.2s; }
+        .game-btn:hover { border-color: var(--accent); background: #10121a; }
+        .game-btn.locked { opacity: 0.4; filter: grayscale(100%); pointer-events: none; }
+        .g-icon { font-size: 38px; margin-bottom: 12px; }
+        .g-name { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+        .tier-tag { position: absolute; top: 8px; right: 8px; font-size: 10px; font-weight: 900; padding: 3px 6px; border-radius: 4px; }
+        
+        /* === HUD RISULTATI === */
+        .hud { background: #000; border-left: 4px solid var(--accent); padding: 20px; border-radius: 6px; display: none; margin-top: 25px; border-top: 1px solid var(--border); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+        .stat-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px dashed var(--border); font-size: 14px; font-weight: bold; align-items: center; }
+        .stat-row:last-child { border-bottom: none; }
+        .val { font-size: 18px; font-family: monospace; color: #fff; }
+        .good { color: var(--success); } .bad { color: var(--danger); }
+        .alert-box { margin-top: 20px; padding: 15px; background: rgba(255,42,42,0.1); border: 1px solid var(--danger); color: var(--danger); font-size: 13px; font-weight: bold; border-radius: 6px; text-align: justify; line-height: 1.5; }
+        .alert-box.safe { background: rgba(5,255,161,0.1); border-color: var(--success); color: var(--success); }
+
+        /* === SQUID 3-STATE TRACKER UI === */
+        .tracker-board { background: #000; border: 1px solid #1f2233; border-radius: 8px; padding: 15px; margin-bottom: 15px; }
+        .path-log { font-family: monospace; font-size: 18px; letter-spacing: 5px; color: var(--accent); text-align: center; word-wrap: break-word; min-height: 30px; margin-bottom: 10px; }
+        
+        .controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; transition: 0.3s; }
+        .btn-l, .btn-r, .btn-c { padding: 15px 10px; font-size: 16px; font-weight: 900; border: none; border-radius: 8px; cursor: pointer; color: #fff; transition: 0.1s; box-sizing: border-box; }
+        .btn-l { background: #3b82f6; box-shadow: 0 4px 0 #1d4ed8; }
+        .btn-c { background: #9333ea; box-shadow: 0 4px 0 #6b21a8; }
+        .btn-r { background: #f59e0b; box-shadow: 0 4px 0 #b45309; }
+        .btn-l:active, .btn-c:active, .btn-r:active { transform: translateY(4px); box-shadow: 0 0 0 transparent; }
+        
+        .outcome-panel { display: none; background: #0f111a; border: 1px dashed var(--accent); padding: 15px; border-radius: 8px; text-align: center; margin-top: 10px; animation: slideUp 0.2s; }
+        .btn-win { background: var(--success); color: #000; border: none; padding: 12px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; margin: 5px; }
+        .btn-loss { background: var(--danger); color: #fff; border: none; padding: 12px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; margin: 5px; }
+
+        .footer { padding: 25px; font-size: 10px; color: #4a506b; text-align: justify; border-top: 1px solid var(--border); background: #030406; line-height: 1.6; }
+    </style>
+</head>
+<body>
+
+<div id="splash-screen">
+    <div class="logo-container">
+        <div class="logo-icon">👁️‍🗨️</div>
+        <h1 class="logo-text">QUANTUM</h1>
+        <div class="logo-sub">Underground Lab OS</div>
+    </div>
+</div>
+
+<div id="app">
+
+    <div id="view-login" class="view active" style="margin-top: 10vh;">
+        <div style="text-align: center; margin-bottom: 35px;">
+            <div style="font-size: 50px; filter: drop-shadow(0 0 15px var(--accent)); margin-bottom: 10px;">👁️‍🗨️</div>
+            <h1 style="color: var(--accent); font-
