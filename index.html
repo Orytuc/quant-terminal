@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Edge OS | Premium</title>
+    <style>
+        :root { 
+            --bg: #09090b; --surface: #18181b; --border: #27272a; 
+            --primary: #3b82f6; --primary-glow: rgba(59, 130, 246, 0.4);
+            --success: #10b981; --warning: #f59e0b; --danger: #ef4444; 
+            --text-main: #f4f4f5; --text-muted: #a1a1aa; 
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text-main); margin: 0; padding: 0; user-select: none; }
+        
+        .app-container { max-width: 600px; margin: 0 auto; min-height: 100vh; background: var(--bg); position: relative; }
+        .screen { display: none; padding: 20px; animation: fadeIn 0.2s ease-in; }
+        .screen.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Top Navigation */
+        .top-nav { display: flex; justify-content: space-between; align-items: center; padding-bottom: 15px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+        .lang-switch { background: var(--surface); color: var(--text-main); border: 1px solid var(--border); padding: 5px 10px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .back-btn { background: transparent; color: var(--text-muted); border: 1px solid var(--border); padding: 8px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .back-btn:active { background: var(--surface); }
+        h1 { font-size: 20px; color: var(--primary); margin: 0; text-shadow: 0 0 10px var(--primary-glow); text-transform: uppercase; }
+        h2 { font-size: 16px; margin: 0; }
+        
+        /* UI Elements */
+        .box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 15px; margin-bottom: 15px; }
+        label { display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 5px; text-transform: uppercase; font-weight: bold; }
+        input { width: 100%; background: #000; color: var(--text-main); border: 1px solid var(--border); padding: 12px; font-size: 16px; border-radius: 6px; box-sizing: border-box; margin-bottom: 12px; font-family: monospace; font-weight: bold; }
+        button.btn-primary { width: 100%; background: var(--primary); color: white; border: none; padding: 15px; font-size: 14px; font-weight: bold; border-radius: 6px; cursor: pointer; text-transform: uppercase; margin-top: 5px; }
+        button.btn-primary:active { opacity: 0.8; }
+        
+        /* Lobby Grid */
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .card { background: var(--surface); border: 1px solid var(--border); padding: 20px 10px; text-align: center; border-radius: 10px; cursor: pointer; }
+        .card:active { border-color: var(--primary); }
+        .card-icon { font-size: 28px; margin-bottom: 8px; }
+        .card-title { font-size: 13px; font-weight: bold; }
+        
+        /* Risultati HUD */
+        .hud { background: #000; border: 1px solid var(--primary); padding: 15px; border-radius: 8px; display: none; margin-top: 15px; }
+        .data-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+        .data-row:last-child { border-bottom: none; }
+        .val { font-weight: bold; font-size: 14px; }
+        .good { color: var(--success); } .bad { color: var(--danger); }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+
+    <div style="position: absolute; top: 10px; right: 15px; z-index: 100;">
+        <button class="lang-switch" onclick="toggleLanguage()" id="langBtn">🇮🇹 IT</button>
+    </div>
+
+    <div id="view-login" class="screen active" style="padding-top: 25vh;">
+        <h1 style="text-align: center; font-size: 26px;">QUANTUM EDGE</h1>
+        <p style="text-align: center; color: var(--text-muted); font-size: 13px;" data-i18n="login_sub">Inserisci la tua Licenza Premium</p>
+        
+        <div class="box">
+            <input type="text" id="licenseKey" placeholder="VIP2024" style="text-align: center; letter-spacing: 2px;">
+            <button class="btn-primary" onclick="login()" data-i18n="btn_auth">Autenticati</button>
+            <p id="loginError" style="color: var(--danger); font-size: 12px; text-align: center; display: none;" data-i18n="login_err">Codice non valido.</p>
+        </div>
+    </div>
+
+    <div id="view-home" class="screen">
+        <div class="top-nav">
+            <h1>QUANTUM EDGE</h1>
+        </div>
+        <p style="color: var(--text-muted); font-size: 14px; margin-top: 0;" data-i18n="home_select">Seleziona il modulo algoritmico:</p>
+        
+        <div class="grid">
+            <div class="card" onclick="naviga('view-squid')">
+                <div class="card-icon">🌉</div>
+                <div class="card-title">BRIDGE / SQUID</div>
+            </div>
+            <div class="card" onclick="naviga('view-mines')">
+                <div class="card-icon">💣</div>
+                <div class="card-title">MINES / GRID</div>
+            </div>
+            <div class="card" onclick="naviga('view-aviator')">
+                <div class="card-icon">✈️</div>
+                <div class="card-title">CRASH / AVIATOR</div>
+            </div>
+            <div class="card" style="opacity: 0.4;">
+                <div class="card-icon">🎡</div>
+                <div class="card-title">SPIN WHEELS</div>
+                <div style="font-size: 9px; color: var(--warning); margin-top: 5px;">PREMIUM+</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-squid" class="screen">
+        <div class="top-nav">
+            <h2>🌉 Bridge Module</h2>
+            <button class="back-btn" onclick="naviga('view-home')" data-i18n="btn_back">⬅ INDIETRO</button>
+        </div>
+        
+        <div class="box">
+            <label data-i18n="lbl_bankroll">Capitale in cassa (€)</label>
+            <input type="number" id="sqBankroll" value="100">
+            <label data-i18n="lbl_steps">Passi totali del ponte</label>
+            <input type="number" id="sqPassi" value="5">
+            <label data-i18n="lbl_choices">Lastre per passo (es. 2)</label>
+            <input type="number" id="sqScelte" value="2">
+            
+            <button class="btn-primary" onclick="calcSquid()" data-i18n="btn_calc">Genera Piano Sicuro</button>
+        </div>
+
+        <div id="hud-squid" class="hud">
+            <div class="data-row">
+                <span data-i18n="res_prob">Prob. Vittoria Netta:</span>
+                <span id="sqProb" class="val">--</span>
+            </div>
+            <div class="data-row">
+                <span data-i18n="res_loss">Striscia Perdente Prevista:</span>
+                <span id="sqStreak" class="val bad">--</span>
+            </div>
+            <div class="data-row" style="border:none;">
+                <span data-i18n="res_bet">PUNTATA MASSIMA:</span>
+                <span id="sqBet" class="val good" style="font-size: 18px;">--</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-mines" class="screen">
+        <div class="top-nav">
+            <h2>💣 Mines Module</h2>
+            <button class="back-btn" onclick="naviga('view-home')" data-i18n="btn_back">⬅ INDIETRO</button>
+        </div>
+        
+        <div class="box">
+            <label data-i18n="lbl_bankroll">Capitale in cassa (€)</label>
+            <input type="number" id="miBankroll" value="100">
+            <label data-i18n="lbl_grid">Caselle Totali Griglia</label>
+            <input type="number" id="miTot" value="25">
+            <label data-i18n="lbl_bombs">Numero di Bombe</label>
+            <input type="number" id="miBombs" value="3">
+            <label data-i18n="lbl_target">Target: Caselle da aprire</label>
+            <input type="number" id="miTarget" value="4">
+            
+            <button class="btn-primary" onclick="calcMines()" data-i18n="btn_calc">Analizza Rischio</button>
+        </div>
+
+        <div id="hud-mines" class="hud">
+            <div class="data-row">
+                <span data-i18n="res_risk">Rischio Esplosione:</span>
+                <span id="miRisk" class="val">--</span>
+            </div>
+            <div class="data-row" style="border:none;">
+                <span data-i18n="res_bet">PUNTATA MASSIMA:</span>
+                <span id="miBet" class="val good" style="font-size: 18px;">--</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-aviator" class="screen">
+        <div class="top-nav">
+            <h2>✈️ Crash Module</h2>
+            <button class="back-btn" onclick="naviga('view-home')" data-i18n="btn_back">⬅ INDIETRO</button>
+        </div>
+        
+        <div class="box">
+            <label data-i18n="lbl_bankroll">Capitale in cassa (€)</label>
+            <input type="number" id="avBankroll" value="100">
+            <label data-i18n="lbl_multi">Moltiplicatore Obiettivo (es. 2.00)</label>
+            <input type="number" id="avTarget" step="0.01" value="2.00">
+            
+            <button class="btn-primary" onclick="calcAviator()" data-i18n="btn_calc">Calcola Drawdown</button>
+        </div>
+
+        <div id="hud-aviator" class="hud">
+            <div class="data-row">
+                <span data-i18n="res_crash">Prob. Schianto:</span>
+                <span id="avRisk" class="val bad">--</span>
+            </div>
+            <div class="data-row" style="border:none;">
+                <span data-i18n="res_bet">PUNTATA MASSIMA:</span>
+                <span id="avBet" class="val good" style="font-size: 18px;">--</span>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // ================= DIZIONARIO LINGUE =================
+    const dict = {
+        it: {
+            login_sub: "Inserisci la tua Licenza Premium",
+            btn_auth: "Autenticati",
+            login_err: "Codice non valido. Accesso negato.",
+            home_select: "Seleziona il modulo algoritmico:",
+            btn_back: "⬅ INDIETRO",
+            lbl_bankroll: "Capitale in cassa (€)",
+            lbl_steps: "Passi totali del ponte",
+            lbl_choices: "Lastre per passo (es. 2)",
+            btn_calc: "Elabora Strategia",
+            res_prob: "Prob. Vittoria Netta:",
+            res_loss: "Striscia Perdente Prevista:",
+            res_bet: "PUNTATA SICURA MAX:",
+            lbl_grid: "Caselle Totali Griglia",
+            lbl_bombs: "Numero di Bombe",
+            lbl_target: "Target: Caselle da aprire",
+            res_risk: "Rischio Globale Esplosione:",
+            lbl_multi: "Moltiplicatore Obiettivo (es. 2.00)",
+            res_crash: "Probabilità di Schianto:"
+        },
+        en: {
+            login_sub: "Enter your Premium License Key",
+            btn_auth: "Authenticate",
+            login_err: "Invalid Code. Access Denied.",
+            home_select: "Select algorithm module:",
+            btn_back: "⬅ BACK",
+            lbl_bankroll: "Total Bankroll (€)",
+            lbl_steps: "Total bridge steps",
+            lbl_choices: "Plates per step (e.g. 2)",
+            btn_calc: "Process Strategy",
+            res_prob: "Net Win Probability:",
+            res_loss: "Expected Losing Streak:",
+            res_bet: "MAX SAFE BET:",
+            lbl_grid: "Total Grid Tiles",
+            lbl_bombs: "Number of Bombs",
+            lbl_target: "Target: Tiles to open",
+            res_risk: "Global Explosion Risk:",
+            lbl_multi: "Target Multiplier (e.g. 2.00)",
+            res_crash: "Crash Probability:"
+        }
+    };
+
+    let currentLang = 'it';
+
+    function toggleLanguage() {
+        currentLang = currentLang === 'it' ? 'en' : 'it';
+        document.getElementById('langBtn').innerText = currentLang === 'it' ? '🇮🇹 IT' : '🇬🇧 EN';
+        
+        // Applica le traduzioni a tutti gli elementi con l'attributo data-i18n
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            let key = el.getAttribute('data-i18n');
+            if(dict[currentLang][key]) {
+                el.innerText = dict[currentLang][key];
+            }
+        });
+    }
+
+    // ================= LOGICA NAVIGAZIONE E LOGIN =================
+    function naviga(viewId) {
+        document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+        document.getElementById(viewId).classList.add('active');
+        // Nasconde gli HUD vecchi quando si cambia pagina
+        document.querySelectorAll('.hud').forEach(el => el.style.display = 'none');
+    }
+
+    function login() {
+        let code = document.getElementById('licenseKey').value;
+        if(code.toUpperCase() === "VIP2024") {
+            naviga('view-home');
+        } else {
+            document.getElementById('loginError').style.display = 'block';
+        }
+    }
+
+    // ================= MOTORI MATEMATICI =================
+
+    // 1. SQUID GAME
+    function calcSquid() {
+        let b = parseFloat(document.getElementById('sqBankroll').value);
+        let p = parseInt(document.getElementById('sqPassi').value);
+        let s = parseInt(document.getElementById('sqScelte').value);
+
+        let probWin = Math.pow((1/s), p);
+        let tentativi = Math.ceil(Math.log(0.05) / Math.log(1 - probWin)); // Confidenza 95%
+        let maxBet = b / tentativi;
+
+        document.getElementById('sqProb').innerText = (probWin * 100).toFixed(2) + "%";
+        document.getElementById('sqProb').className = "val " + (probWin < 0.1 ? "bad" : "good");
+        document.getElementById('sqStreak').innerText = tentativi + " (95% Conf)";
+        document.getElementById('sqBet').innerText = "€ " + maxBet.toFixed(2);
+        
+        document.getElementById('hud-squid').style.display = 'block';
+    }
+
+    // 2. MINES
+    function calcMines() {
+        let b = parseFloat(document.getElementById('miBankroll').value);
+        let tot = parseInt(document.getElementById('miTot').value);
+        let bombs = parseInt(document.getElementById('miBombs').value);
+        let target = parseInt(document.getElementById('miTarget').value);
+
+        if(target + bombs > tot) return alert("Dati errati");
+
+        let probSalvezza = 1;
+        for(let i=0; i<target; i++) {
+            probSalvezza *= (tot - bombs - i) / (tot - i);
+        }
+        let rischio = 1 - probSalvezza;
+        let tentativi = Math.ceil(Math.log(0.05) / Math.log(probSalvezza === 1 ? 0.99 : probSalvezza));
+        let maxBet = (b / tentativi) * (rischio * 5); // Adattamento rischio
+        if (maxBet > b) maxBet = b; // Previene errori matematici sui safe-bet
+
+        document.getElementById('miRisk').innerText = (rischio * 100).toFixed(1) + "%";
+        document.getElementById('miRisk').className = "val " + (rischio > 0.5 ? "bad" : "good");
+        document.getElementById('miBet').innerText = "€ " + maxBet.toFixed(2);
+        
+        document.getElementById('hud-mines').style.display = 'block';
+    }
+
+    // 3. AVIATOR
+    function calcAviator() {
+        let b = parseFloat(document.getElementById('avBankroll').value);
+        let target = parseFloat(document.getElementById('avTarget').value);
+        
+        if(target < 1.01) return;
+
+        let probWin = 0.97 / target; // 97% RTP
+        if (probWin > 1) probWin = 1;
+        let rischio = 1 - probWin;
+        
+        let tentativi = Math.ceil(Math.log(0.05) / Math.log(1 - probWin));
+        let maxBet = b / tentativi;
+
+        document.getElementById('avRisk').innerText = (rischio * 100).toFixed(1) + "%";
+        document.getElementById('avBet').innerText = "€ " + maxBet.toFixed(2);
+        
+        document.getElementById('hud-aviator').style.display = 'block';
+    }
+</script>
+
+</body>
+</html>
