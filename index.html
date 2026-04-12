@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Edge OS | Apex Build</title>
+    <style>
+        :root { 
+            --bg: #050914; --panel: #0b1121; --border: #1e293b; 
+            --accent: #38bdf8; --accent-glow: rgba(56, 189, 248, 0.4);
+            --success: #10b981; --danger: #f43f5e; --warning: #f59e0b;
+            --text: #f1f5f9; --text-muted: #64748b;
+        }
+        
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; justify-content: center; }
+        
+        #mainframe { width: 100%; max-width: 800px; background: var(--panel); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); overflow: hidden; }
+        
+        /* HEADER */
+        .header { background: #070c1a; padding: 25px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { margin: 0; font-size: 24px; color: var(--text); letter-spacing: 2px; font-weight: 900; display: flex; align-items: center; gap: 10px; }
+        .header h1 span { color: var(--accent); }
+        .status-badge { background: rgba(16, 185, 129, 0.1); color: var(--success); border: 1px solid var(--success); padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; letter-spacing: 1px; }
+
+        /* CONTENT */
+        .content { padding: 25px; }
+        
+        /* SELECTORS */
+        .selector-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px; }
+        .input-group { display: flex; flex-direction: column; gap: 8px; }
+        label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 1px; }
+        select, input { background: #03060d; color: var(--accent); border: 1px solid var(--border); padding: 16px; border-radius: 8px; font-size: 15px; font-weight: bold; outline: none; transition: 0.3s; font-family: monospace; }
+        select:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+
+        /* DYNAMIC PANEL */
+        .dynamic-panel { background: #070c1a; border: 1px solid var(--border); border-radius: 12px; padding: 25px; margin-bottom: 25px; }
+        .module-title { color: var(--accent); margin: 0 0 20px 0; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px dashed var(--border); padding-bottom: 10px; }
+        
+        /* BUTTONS */
+        .btn { width: 100%; background: linear-gradient(135deg, #0284c7, #38bdf8); color: #fff; border: none; padding: 20px; font-size: 16px; font-weight: 900; text-transform: uppercase; letter-spacing: 3px; border-radius: 8px; cursor: pointer; transition: 0.2s; box-shadow: 0 10px 20px -5px var(--accent-glow); }
+        .btn:active { transform: translateY(2px); box-shadow: 0 5px 10px -5px var(--accent-glow); }
+
+        /* HUD RISULTATI */
+        .hud { background: #03060d; border-radius: 12px; border-left: 4px solid var(--accent); padding: 25px; margin-top: 25px; display: none; }
+        .hud-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .stat-box { background: #0b1121; border: 1px solid var(--border); padding: 15px; border-radius: 8px; }
+        .stat-title { font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: bold; margin-bottom: 5px; }
+        .stat-val { font-size: 24px; font-weight: 900; font-family: monospace; }
+        
+        .good { color: var(--success); }
+        .bad { color: var(--danger); }
+        .warn { color: var(--warning); }
+
+        .terminal-log { margin-top: 20px; padding: 15px; background: rgba(56, 189, 248, 0.05); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; line-height: 1.6; color: var(--text); border-left: 4px solid var(--accent); }
+    </style>
+</head>
+<body>
+
+<div id="mainframe">
+    <div class="header">
+        <h1><span>⚡</span> QUANTUM EDGE OS</h1>
+        <div class="status-badge">🟢 APEX ENGINE ONLINE</div>
+    </div>
+
+    <div class="content">
+        <div class="selector-grid">
+            <div class="input-group">
+                <label>Provider Architettura</label>
+                <select id="providerSelect" onchange="aggiornaModuli()">
+                    <option value="upgaming">UPGAMING (Mines, Path, Icefield)</option>
+                    <option value="spribe">SPRIBE (Aviator, Crash)</option>
+                    <option value="generic">GENERIC RNG (Plinko, Dice)</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Capitale Operativo (Bankroll)</label>
+                <input type="number" id="bankroll" value="1000">
+            </div>
+        </div>
+
+        <div id="dynamicContainer" class="dynamic-panel">
+            </div>
+
+        <button class="btn" onclick="analizzaSistema()">Esegui Motore Quantitativo</button>
+
+        <div id="outputHUD" class="hud">
+            <h3 style="margin: 0 0 20px 0; color: #fff; font-size: 14px; text-transform: uppercase;">Analisi Predittiva e Rischio</h3>
+            <div class="hud-grid">
+                <div class="stat-box">
+                    <div class="stat-title">Probabilità di Successo</div>
+                    <div class="stat-val" id="resProb">--</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-title">Puntata Max Consigliata</div>
+                    <div class="stat-val" id="resBet" style="color: var(--accent);">--</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-title">Vantaggio Matematico (EV)</div>
+                    <div class="stat-val" id="resEV">--</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-title">Striscia di Rovina (Loss Limit)</div>
+                    <div class="stat-val bad" id="resRuin">--</div>
+                </div>
+            </div>
+            <div id="terminalOutput" class="terminal-log">
+                In attesa di elaborazione dati...
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ==========================================
+    // 1. INIEZIONE DINAMICA DELL'INTERFACCIA
+    // ==========================================
+    function aggiornaModuli() {
+        const provider = document.getElementById('providerSelect').value;
+        const container = document.getElementById('dynamicContainer');
+        
+        document.getElementById('outputHUD').style.display = 'none';
+
+        if (provider === 'upgaming') {
+            container.innerHTML = `
+                <h2 class="module-title">Motore Griglie e Percorsi (Upgaming)</h2>
+                <div class="selector-grid">
+                    <div class="input-group">
+                        <label>Tipo di Gioco</label>
+                        <select id="ugType">
+                            <option value="path">Percorso (es. Yeti/Icefield/Bridge)</option>
+                            <option value="grid">Griglia (es. Chicken/Mines)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="selector-grid">
+                    <div class="input-group">
+                        <label>Passi/Caselle da scoprire</label>
+                        <input type="number" id="ugTarget" value="4">
+                    </div>
+                    <div class="input-group">
+                        <label>Opzioni per passo o Caselle Totali</label>
+                        <input type="number" id="ugTotal" value="25" placeholder="Es. 25 caselle o 3 lastre">
+                    </div>
+                    <div class="input-group">
+                        <label>Bombe / Opzioni Sbagliate</label>
+                        <input type="number" id="ugTraps" value="3" placeholder="Ostacoli presenti">
+                    </div>
+                    <div class="input-group">
+                        <label>Moltiplicatore al Target</label>
+                        <input type="number" step="0.01" id="ugMulti" value="2.50">
+                    </div>
+                </div>
+            `;
+        } else if (provider === 'spribe') {
+            container.innerHTML = `
+                <h2 class="module-title">Motore Curve Logaritmiche (Spribe)</h2>
+                <div class="selector-grid">
+                    <div class="input-group">
+                        <label>Moltiplicatore di Cashout Automatico</label>
+                        <input type="number" step="0.01" id="spTarget" value="2.00">
+                    </div>
+                    <div class="input-group">
+                        <label>Voli persi consecutivi attuali (Tracker)</label>
+                        <input type="number" id="spStreak" value="0" placeholder="Es. 4 voli rossi di fila">
+                    </div>
+                </div>
+            `;
+        } else {
+            container.innerHTML = `
+                <h2 class="module-title">Motore Distribuzione Binomiale (Plinko/Dice)</h2>
+                <div class="selector-grid">
+                    <div class="input-group">
+                        <label>Probabilità di Vittoria dichiarata (%)</label>
+                        <input type="number" step="0.01" id="gnProb" value="48.50">
+                    </div>
+                    <div class="input-group">
+                        <label>Moltiplicatore di Vincita</label>
+                        <input type="number" step="0.01" id="gnMulti" value="2.00">
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    // Inizializza l'interfaccia al caricamento
+    window.onload = aggiornaModuli;
+
+    // ==========================================
+    // 2. IL CERVELLO QUANTITATIVO
+    // ==========================================
+    function analizzaSistema() {
+        const provider = document.getElementById('providerSelect').value;
+        const bankroll = parseFloat(document.getElementById('bankroll').value);
+        
+        if (isNaN(bankroll) || bankroll <= 0) return alert("Inserire un Bankroll valido.");
+
+        let probNetta = 0;
+        let moltiplicatore = 0;
+        let rtpStimato = 0.97; // RTP medio dei crypto casino
+        let messaggioTerminale = "";
+
+        // -- CALCOLO UPGAMING (Ipergeometrica e Probabilità Composta) --
+        if (provider === 'upgaming') {
+            const type = document.getElementById('ugType').value;
+            const target = parseInt(document.getElementById('ugTarget').value);
+            const total = parseInt(document.getElementById('ugTotal').value);
+            const traps = parseInt(document.getElementById('ugTraps').value);
+            moltiplicatore = parseFloat(document.getElementById('ugMulti').value);
+
+            if (type === 'path') {
+                // Percorso: la probabilità si moltiplica a ogni passo (Eventi Indipendenti)
+                let safeOptions = total - traps;
+                let probPasso = safeOptions / total;
+                probNetta = Math.pow(probPasso, target);
+                messaggioTerminale = `Analisi percorso completata. Hai il ${(probPasso*100).toFixed(1)}% di probabilità per ogni singolo passo. La varianza negativa divorerà i capitali piccoli prima di raggiungere il target di ${target} passi consecutivi.`;
+            } else {
+                // Griglia: la probabilità cambia perché le caselle diminuiscono (Senza Re-immissione)
+                probNetta = 1;
+                for (let i = 0; i < target; i++) {
+                    probNetta *= (total - traps - i) / (total - i);
+                }
+                messaggioTerminale = `Analisi griglia completata. Il motore Upgaming genera l'intera mappa tramite SHA-256 prima del tuo clic. Svuotare ${target} caselle ti offre una probabilità composta del ${(probNetta*100).toFixed(2)}%.`;
+            }
+        } 
+        
+        // -- CALCOLO SPRIBE (Curva del Moltiplicatore e Varianza) --
+        else if (provider === 'spribe') {
+            moltiplicatore = parseFloat(document.getElementById('spTarget').value);
+            const streakTracker = parseInt(document.getElementById('spStreak').value);
+            
+            // L'algoritmo Spribe punta a mantenere l'RTP al 97%. La formula base per i crash game è (0.99 / M) * HouseEdge
+            probNetta = rtpStimato / moltiplicatore; 
+            if (probNetta > 1) probNetta = 1;
+
+            if (streakTracker > 0) {
+                // Calcolo Ritorno Verso la Media (Non garantisce la vincita, ma indica se siamo in una bolla statistica)
+                let limiteMatematico = Math.ceil(Math.log(0.01) / Math.log(1 - probNetta));
+                if (streakTracker >= limiteMatematico - 1) {
+                    messaggioTerminale = `⚠️ <strong>ROTTURA DELLA VARIANZA:</strong> L'RNG di Spribe ha appena accumulato una quantità anomala di voli sotto ${moltiplicatore}x. Il momento statistico ottimale per l'ingresso è adesso. Usa la puntata indicata e imposta l'auto-cashout.`;
+                } else {
+                    messaggioTerminale = `L'algoritmo Spribe è stabile. Hai accumulato ${streakTracker} perdite, ma per saturare la varianza devi attendere fino a ${limiteMatematico} rossi consecutivi. Rispetta ferocemente il bankroll management.`;
+                }
+            } else {
+                messaggioTerminale = `L'RNG lavora nominalmente. La probabilità di sfondare la quota ${moltiplicatore}x è fissa al ${(probNetta*100).toFixed(2)}%. Il sistema Provably Fair impedisce ogni previsione a breve termine. Difendi il capitale.`;
+            }
+        } 
+        
+        // -- CALCOLO GENERICO --
+        else {
+            probNetta = parseFloat(document.getElementById('gnProb').value) / 100;
+            moltiplicatore = parseFloat(document.getElementById('gnMulti').value);
+            messaggioTerminale = `Profilo statistico puro applicato. Verifica sempre che il provider certifichi il generatore casuale.`;
+        }
+
+        // ==========================================
+        // CALCOLO RISCHIO, KELLY E BANKROLL
+        // ==========================================
+        
+        // 1. Valore Atteso (Expected Value)
+        let ev = (probNetta * moltiplicatore) - 1; 
+        let evDisplay = (ev * 100).toFixed(2) + "%";
+        
+        // 2. Criterio di Kelly (Frazionato per sicurezza extra nei casinò)
+        let edge = (probNetta * moltiplicatore) - 1;
+        let odds = moltiplicatore - 1;
+        let kellyFraction = 0;
+        
+        if (edge > 0) {
+            kellyFraction = (edge / odds) * 0.25; // Quarter-Kelly (Molto prudente, perfetto per crypto casino)
+        } else {
+            // EV negativo, Kelly suggerisce zero. Diamo una puntata di sopravvivenza calcolata sul Drawdown.
+            kellyFraction = 0.005; // 0.5% del bankroll
+        }
+        
+        let puntataOttimale = bankroll * kellyFraction;
+
+        // 3. Striscia di Rovina (Loss Limit al 99% di Confidenza)
+        let probPerdita = 1 - probNetta;
+        // Evita errori matematici se la probabilità di perdita è troppo vicina a 1 o 0
+        if (probPerdita >= 1) probPerdita = 0.999;
+        let lossLimit = Math.ceil(Math.log(0.01) / Math.log(probPerdita));
+
+        // ==========================================
+        // RENDER DEI RISULTATI
+        // ==========================================
+        const elProb = document.getElementById('resProb');
+        elProb.innerText = (probNetta * 100).toFixed(2) + "%";
+        elProb.className = `stat-val ${probNetta > 0.4 ? 'good' : 'warn'}`;
+
+        document.getElementById('resBet').innerText = `€ ${puntataOttimale.toFixed(2)}`;
+
+        const elEV = document.getElementById('resEV');
+        elEV.innerText = ev > 0 ? "+" + evDisplay : evDisplay;
+        elEV.className = `stat-val ${ev > 0 ? 'good' : 'bad'}`;
+
+        document.getElementById('resRuin').innerText = `Max ${lossLimit} Tiri`;
+
+        // Colora e aggiorna il terminale
+        let termLog = document.getElementById('terminalOutput');
+        if (ev < -0.05) {
+            termLog.style.borderColor = "var(--danger)";
+            termLog.style.background = "rgba(244, 63, 94, 0.05)";
+            messaggioTerminale += "<br><br><strong>DIRETTIVA:</strong> Il vantaggio del banco in questa configurazione è troppo alto. Riduci le tue aspettative di moltiplicatore o astieniti dal giocare.";
+        } else {
+            termLog.style.borderColor = "var(--accent)";
+            termLog.style.background = "rgba(56, 189, 248, 0.05)";
+        }
+        termLog.innerHTML = messaggioTerminale;
+
+        document.getElementById('outputHUD').style.display = 'block';
+    }
+</script>
+
+</body>
+</html>
