@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Edge OS | Enterprise</title>
+    <style>
+        :root { 
+            --bg: #02040a; --panel: #0d1117; --border: #30363d; 
+            --accent: #58a6ff; --accent-glow: rgba(88, 166, 255, 0.3);
+            --premium: #bf87ff; --basic: #8b949e;
+            --success: #238636; --danger: #da3633; --text: #c9d1d9; 
+            --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, sans-serif;
+            --font-mono: "Fira Code", Consolas, monospace;
+        }
+        * { box-sizing: border-box; }
+        body { font-family: var(--font-main); background: var(--bg); color: var(--text); margin: 0; padding: 0; user-select: none; overflow-x: hidden; }
+        
+        /* === SPLASH SCREEN ENTERPRISE === */
+        #splash-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #010409; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.6s ease; }
+        .logo-box { text-align: center; animation: float 3s ease-in-out infinite; }
+        .logo-icon { font-size: 80px; filter: drop-shadow(0 0 30px var(--accent)); margin-bottom: 10px; }
+        .logo-text { font-size: 38px; font-weight: 900; color: #fff; letter-spacing: 6px; margin: 0; text-transform: uppercase; }
+        .logo-text span { color: var(--accent); }
+        .logo-sub { color: var(--basic); font-size: 11px; letter-spacing: 10px; margin-top: 5px; font-family: var(--font-mono); }
+        @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-15px); } 100% { transform: translateY(0px); } }
+
+        /* === LAYOUT === */
+        #app { max-width: 650px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; background: var(--panel); border-left: 1px solid var(--border); border-right: 1px solid var(--border); box-shadow: 0 0 50px rgba(0,0,0,0.5); }
+        .view { display: none; flex: 1; padding: 30px 20px; animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        .view.active { display: block; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* === UI ELEMENTS === */
+        .header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 20px; border-bottom: 1px solid var(--border); margin-bottom: 25px; }
+        .header h1 { margin: 0; font-size: 22px; color: #fff; font-weight: 800; letter-spacing: 1px; }
+        .badge { padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 900; letter-spacing: 1px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        .badge.premium { background: linear-gradient(135deg, #a371f7, #bf87ff); color: #fff; }
+        .badge.basic { background: var(--border); color: #fff; }
+        
+        .card { background: #010409; border: 1px solid var(--border); border-radius: 12px; padding: 25px; margin-bottom: 20px; position: relative; overflow: hidden; }
+        .card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--accent); }
+        
+        .input-group { margin-bottom: 18px; }
+        label { display: block; font-size: 11px; color: var(--basic); margin-bottom: 8px; text-transform: uppercase; font-weight: bold; letter-spacing: 1px; }
+        input, select { width: 100%; background: #0d1117; color: var(--accent); border: 1px solid var(--border); padding: 16px; font-size: 16px; border-radius: 8px; outline: none; font-weight: bold; font-family: var(--font-mono); transition: 0.2s; }
+        input:focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+        
+        button.btn { width: 100%; background: var(--accent); color: #010409; border: none; padding: 18px; font-size: 15px; font-weight: 900; border-radius: 8px; cursor: pointer; text-transform: uppercase; letter-spacing: 2px; margin-top: 10px; transition: 0.2s; }
+        button.btn:active { transform: scale(0.98); }
+        button.btn-back { background: transparent; color: var(--basic); border: 1px solid var(--border); padding: 10px 15px; font-size: 12px; border-radius: 6px; font-weight: bold; }
+        button.btn-back:hover { background: var(--border); color: #fff; }
+        
+        /* === LOBBY GRID === */
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .game-btn { background: #010409; border: 1px solid var(--border); padding: 30px 15px; border-radius: 12px; text-align: center; cursor: pointer; position: relative; transition: all 0.2s ease; }
+        .game-btn:hover { border-color: var(--accent); transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
+        .game-btn.locked { opacity: 0.4; filter: grayscale(100%); pointer-events: none; }
+        .g-icon { font-size: 40px; margin-bottom: 15px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4)); }
+        .g-name { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #fff; }
+        .tier-tag { position: absolute; top: 10px; right: 10px; font-size: 9px; font-weight: 900; padding: 3px 6px; border-radius: 4px; }
+        
+        /* === HUD RISULTATI === */
+        .hud { background: #0d1117; border: 1px solid var(--accent); padding: 25px; border-radius: 12px; display: none; margin-top: 25px; box-shadow: 0 0 20px var(--accent-glow); }
+        .stat-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 14px; font-weight: 600; align-items: center; color: var(--basic); }
+        .stat-row:last-child { border-bottom: none; padding-bottom: 0; }
+        .val { font-size: 18px; font-family: var(--font-mono); color: #fff; }
+        .good { color: var(--success); text-shadow: 0 0 10px rgba(35,134,54,0.5); } 
+        .bad { color: var(--danger); text-shadow: 0 0 10px rgba(218,54,51,0.5); }
+        
+        .alert-box { margin-top: 25px; padding: 18px; background: rgba(218,54,51,0.05); border: 1px solid var(--danger); color: var(--danger); font-size: 13px; font-weight: bold; border-radius: 8px; line-height: 1.6; }
+        .alert-box.safe { background: rgba(35,134,54,0.05); border-color: var(--success); color: var(--success); }
+
+        /* === SQUID DEEP-TRACKER UI === */
+        .tracker-board { background: #000; border: 1px solid #1f2328; border-radius: 8px; padding: 15px; margin-bottom: 15px; }
+        .path-log { font-family: var(--font-mono); font-size: 18px; letter-spacing: 6px; color: var(--accent); text-align: center; word-wrap: break-word; min-height: 30px; margin-bottom: 10px; }
+        .controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+        .btn-l, .btn-r { padding: 20px; font-size: 20px; font-weight: 900; border: none; border-radius: 8px; cursor: pointer; color: #fff; transition: 0.1s; }
+        .btn-l { background: #1f6feb; box-shadow: 0 4px 0 #1158c7; }
+        .btn-r { background: #d29922; box-shadow: 0 4px 0 #9e731c; }
+        .btn-l:active, .btn-r:active { transform: translateY(4px); box-shadow: 0 0 0 transparent; }
+        
+        .outcome-panel { display: none; background: #161b22; border: 1px dashed var(--accent); padding: 15px; border-radius: 8px; text-align: center; margin-top: 10px; animation: slideUp 0.2s; }
+        .btn-win { background: var(--success); color: #fff; border: none; padding: 12px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; margin: 5px; }
+        .btn-loss { background: var(--danger); color: #fff; border: none; padding: 12px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; margin: 5px; }
+
+    </style>
+</head>
+<body>
+
+<div id="splash-screen">
+    <div class="logo-box">
+        <div class="logo-icon">🔮</div>
+        <h1 class="logo-text">QUANTUM<span>EDGE</span></h1>
+        <div class="logo-sub">Enterprise Analytical Core</div>
+    </div>
+</div>
+
+<div id="app">
+
+    <div id="view-login" class="view active" style="margin-top: 12vh;">
+        <div style="text-align: center; margin-bottom: 40px;">
+            <div style="font-size: 60px; filter: drop-shadow(0 0 20px var(--accent)); margin-bottom: 15px;">🔮</div>
+            <h1 style="color: #fff; font-size: 28px; margin: 0; letter-spacing: 3px;">QUANTUM EDGE</h1>
+            <p style="font-size: 12px; color: var(--accent); margin-top: 5px; font-family: var(--font-mono);">A E G I S - P R O T O C O L</p>
+        </div>
+        
+        <div class="card">
+            <label>Master Decryption Key</label>
+            <input type="password" id="licenseKey" placeholder="••••••••••••" style="text-align: center; letter-spacing: 4px;">
+            <button class="btn" onclick="login()">Inizializza Sistema</button>
+            <p id="loginErr" style="color: var(--danger); font-size: 12px; text-align: center; display: none; margin-top: 15px; font-weight: bold;">ACCESSO RIFIUTATO.</p>
+        </div>
+    </div>
+
+    <div id="view-dashboard" class="view">
+        <div class="header">
+            <h1>MAINFRAME</h1>
+            <span id="userTierBadge" class="badge"></span>
+        </div>
+        <div class="grid" id="gamesContainer"></div>
+    </div>
+
+    <div id="view-calculator" class="view">
+        <div class="header">
+            <h1 id="calcTitle" style="color: #fff;">MODULO</h1>
+            <button class="btn-back" onclick="naviga('view-dashboard')">⬅ DISCONNETTI</button>
+        </div>
+        <div id="dynamicModule"></div>
+    </div>
+
+</div>
+
+<script>
+    // === SPLASH ===
+    window.onload = () => {
+        setTimeout(() => {
+            document.getElementById('splash-screen').style.opacity = '0';
+            setTimeout(() => document.getElementById('splash-screen').style.display = 'none', 600);
+        }, 2000);
+    };
+
+    // === CONFIGURAZIONE ===
+    const CODES = { "PREM-BASIC321!": "basic", "PREM-BOSS123!": "premium" };
+    const GIOCHI = [
+        { id: "deepbridge", nome: "DeepBridge AI", icon: "🌉", tier: "premium" }, // Modulo Million Dollar
+        { id: "plinko", nome: "Plinko Matrix", icon: "🔺", tier: "basic" },
+        { id: "streak", nome: "Sequence Flaw", icon: "⚡", tier: "premium" },
+        { id: "aviator", nome: "Crash Engine", icon: "📈", tier: "basic" },
+        { id: "mines", nome: "Mines Sweeper", icon: "💣", tier: "premium" }
+    ];
+
+    let userTier = null;
+    let currentGameId = null;
+
+    // Variabili Globali per DeepBridge
+    let dbTruePath = []; // L'array della matrice di Markov
+    let dbTempChoice = null; // La scelta appena cliccata
+
+    // === LOGIN & NAV ===
+    function naviga(viewId) {
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        document.getElementById(viewId).classList.add('active');
+    }
+
+    function login() {
+        const key = document.getElementById('licenseKey').value.trim();
+        if (CODES[key]) {
+            userTier = CODES[key];
+            document.getElementById('userTierBadge').innerText = userTier === 'premium' ? '👑 ENTERPRISE' : '👤 STANDARD';
+            document.getElementById('userTierBadge').className = 'badge ' + userTier;
+            renderLobby();
+            naviga('view-dashboard');
+        } else {
+            document.getElementById('loginErr').style.display = 'block';
+        }
+    }
+
+    function renderLobby() {
+        const container = document.getElementById('gamesContainer');
+        container.innerHTML = '';
+        GIOCHI.forEach(g => {
+            let locked = (userTier === 'basic' && g.tier === 'premium');
+            let color = g.tier === 'premium' ? 'var(--premium)' : 'var(--basic)';
+            let btn = document.createElement('div');
+            btn.className = `game-btn ${locked ? 'locked' : ''}`;
+            btn.innerHTML = `
+                <div class="tier-tag" style="color: ${color}; border: 1px solid ${color}">${g.tier}</div>
+                <div class="g-icon">${g.icon}</div>
+                <div class="g-name">${g.nome}</div>
+            `;
+            btn.onclick = () => locked ? alert("Autorizzazione Premium Richiesta. Codice PREM-BOSS123!") : apriModulo(g);
+            container.appendChild(btn);
+        });
+    }
+
+    // === COSTRUZIONE MODULI DINAMICI ===
+    function apriModulo(g) {
+        currentGameId = g.id;
+        document.getElementById('calcTitle').innerText = g.icon + " " + g.nome;
+        const mod = document.getElementById('dynamicModule');
+        
+        if (g.id === 'deepbridge') {
+            // THE MILLION DOLLAR MODULE: SQUID GAME WITH LOSS TRACKING
+            dbTruePath = [];
+            mod.innerHTML = `
+                <div class="card" style="padding:15px;">
+                    <p style="font-size: 11px; color: var(--basic); margin-top:0; text-align:justify;">
+                        <strong>DEEP-TRACKING MODE:</strong> Non tracciamo cosa clicchi, tracciamo la logica del server. Clicca la direzione scelta. Poi conferma se il vetro ha retto o si è rotto. Il sistema mapperà il vero RNG.
+                    </p>
+                    
+                    <div class="tracker-board">
+                        <div style="font-size: 10px; color: #555; text-align: center; margin-bottom: 5px;">SEQUENZA SERVER REALE</div>
+                        <div id="dbLog" class="path-log">- Vuoto -</div>
+                    </div>
+
+                    <div class="controls-grid" id="dbControls">
+                        <button class="btn-l" onclick="selectDirection('S')">SINISTRA</button>
+                        <button class="btn-r" onclick="selectDirection('D')">DESTRA</button>
+                    </div>
+
+                    <div id="dbOutcome" class="outcome-panel">
+                        <p style="font-size: 12px; color: #fff; margin-top:0; font-weight:bold;">Com'è andato il salto?</p>
+                        <button class="btn-win" onclick="resolvePath(true)">✅ SALVO</button>
+                        <button class="btn-loss" onclick="resolvePath(false)">❌ CADUTO</button>
+                    </div>
+
+                    <button class="btn-back" style="width:100%; margin-top:15px;" onclick="resetDeepBridge()">Pulisci Memoria Server</button>
+                </div>
+
+                <div id="calcHUD" class="hud" style="display:block;">
+                    <div class="stat-row"><span>Nodi RNG Mappati:</span> <span id="dbNodes" class="val">0</span></div>
+                    <div class="stat-row"><span>Previsione Algoritmo:</span> <span id="dbPred" class="val" style="color:var(--accent);">IN ATTESA</span></div>
+                    <div class="stat-row" style="border:none;"><span>Affidabilità (Edge):</span> <span id="dbConf" class="val">0%</span></div>
+                    <div id="outAlert" class="alert-box">Inizia a saltare. La rete di Markov ha bisogno di dati per estrapolare la matrice del casinò.</div>
+                </div>
+            `;
+        } else if (g.id === 'streak') {
+            mod.innerHTML = `
+                <div class="card">
+                    <p style="font-size: 11px; color: var(--basic); margin-top:0;">Individua le falle nella distribuzione della varianza locale.</p>
+                    <label>Log Ultimi Risultati (es: 1.2 1.0 1.5)</label>
+                    <input type="text" id="strInput" placeholder="Separati da spazio...">
+                    <label>Target Moltiplicatore (es. 2.00)</label>
+                    <input type="number" step="0.01" id="strTarget" value="2.00">
+                    <button class="btn" onclick="analizzaStriscia()">Avvia Scansione Varianza</button>
+                </div>
+                <div id="calcHUD" class="hud">
+                    <div class="stat-row"><span>Striscia Fredda Rilevata:</span> <span id="sStreak" class="val bad">--</span></div>
+                    <div class="stat-row" style="border:none;"><span>Punto di Rottura:</span> <span id="sBreak" class="val" style="color:var(--accent); font-size:20px;">--</span></div>
+                    <div id="outAlert" class="alert-box"></div>
+                </div>
+            `;
+        } else if (g.id === 'plinko') {
+            mod.innerHTML = `
+                <div class="card">
+                    <div class="input-group"><label>Bankroll Capitale (€)</label><input type="number" id="pBank" value="1000"></div>
+                    <div class="input-group"><label>Righe Attive (Pins)</label>
+                        <select id="pRows"><option value="8">8</option><option value="12" selected>12</option><option value="16">16</option></select>
+                    </div>
+                    <button class="btn" onclick="calcolaPlinko()">Esegui Binomiale</button>
+                </div>
+                <div id="calcHUD" class="hud">
+                    <div class="stat-row"><span>Prob. Buco Centrale:</span> <span id="pLoss" class="val bad">--</span></div>
+                    <div class="stat-row"><span>Prob. Estremi (Max Win):</span> <span id="pWin" class="val good">--</span></div>
+                    <div class="stat-row" style="border:none;"><span>Puntata Ottimale (EV):</span> <span id="pBet" class="val" style="color:var(--accent);">--</span></div>
+                    <div id="outAlert" class="alert-box"></div>
+                </div>
+            `;
+        } else {
+            // Modulo Standard Aviator / Mines
+            let spec = "";
+            if (g.id === 'mines') spec = `<div class="input-group"><label>Griglia Totale</label><input type="number" id="cTot" value="25"></div><div class="input-group"><label>Bombe</label><input type="number" id="cB" value="3"></div><div class="input-group"><label>Caselle Target</label><input type="number" id="cTgt" value="4"></div>`;
+            if (g.id === 'aviator') spec = `<div class="input-group"><label>Cashout Obiettivo</label><input type="number" step="0.01" id="cM" value="2.00"></div>`;
+
+            mod.innerHTML = `
+                <div class="card">
+                    <div class="input-group"><label>Bankroll Operativo (€)</label><input type="number" id="cBank" value="1000"></div>
+                    ${spec}
+                    <button class="btn" onclick="calcolaStandard()">Processa Modello</button>
+                </div>
+                <div id="calcHUD" class="hud">
+                    <div class="stat-row"><span>Probabilità Matematica:</span> <span id="outProb" class="val">--</span></div>
+                    <div class="stat-row"><span>Puntata Suggerita:</span> <span id="outBet" class="val" style="color:var(--accent); font-size:22px;">--</span></div>
+                    <div class="stat-row" style="border:none;"><span>Limite Serie Negativa:</span> <span id="outRuin" class="val bad">--</span></div>
+                    <div id="outAlert" class="alert-box"></div>
+                </div>
+            `;
+        }
+        naviga('view-calculator');
+    }
+
+    // === DEEPBRIDGE AI LOGIC (Squid Game + Loss Tracking) ===
+    function selectDirection(dir) {
+        dbTempChoice = dir;
+        document.getElementById('dbControls').style.display = 'none';
+        document.getElementById('dbOutcome').style.display = 'block';
+    }
+
+    function resolvePath(survived) {
+        let trueNode;
+        if (survived) {
+            trueNode = dbTempChoice; // Se salvo, ha indovinato il vero nodo server
+        } else {
+            trueNode = (dbTempChoice === 'S') ? 'D' : 'S'; // Se cade, il vero nodo era l'altro
+        }
+
+        dbTruePath.push(trueNode);
+        if (dbTruePath.length > 25) dbTruePath.shift(); // Mantiene reattiva la rete
+
+        // Ripristina UI
+        document.getElementById('dbOutcome').style.display = 'none';
+        document.getElementById('dbControls').style.display = 'grid';
+        
+        updateDeepBridgeHUD();
+    }
+
+    function resetDeepBridge() {
+        dbTruePath = [];
+        dbTempChoice = null;
+        document.getElementById('dbOutcome').style.display = 'none';
+        document.getElementById('dbControls').style.display = 'grid';
+        document.getElementById('dbLog').innerText = "- Vuoto -";
+        document.getElementById('dbNodes').innerText = "0";
+        document.getElementById('dbPred').innerText = "IN ATTESA";
+        document.getElementById('dbConf').innerText = "0%";
+        document.getElementById('outAlert').className = "alert-box";
+        document.getElementById('outAlert').innerText = "Memoria server purificata. Pronto per nuovo tracciamento.";
+    }
+
+    function updateDeepBridgeHUD() {
+        document.getElementById('dbLog').innerText = dbTruePath.join("-");
+        document.getElementById('dbNodes').innerText = dbTruePath.length;
+
+        let alertBox = document.getElementById('outAlert');
+
+        if (dbTruePath.length < 4) {
+            document.getElementById('dbPred').innerText = "CALCOLO...";
+            document.getElementById('dbConf').innerText = "--";
+            alertBox.className = "alert-box";
+            alertBox.innerHTML = `Fase di addestramento. Mappati ${dbTruePath.length} nodi RNG. Il sistema necessita di un campione più ampio.`;
+            return;
+        }
+
+        // MARKOV ENGINE SU SEQUENZA VERA
+        let matrix = {};
+        for (let i = 0; i < dbTruePath.length - 1; i++) {
+            let curr = dbTruePath[i], next = dbTruePath[i+1];
+            if (!matrix[curr]) matrix[curr] = { S: 0, D: 0, tot: 0 };
+            matrix[curr][next]++; matrix[curr].tot++;
+        }
+
+        let lastNode = dbTruePath[dbTruePath.length - 1];
+        if (!matrix[lastNode] || matrix[lastNode].tot === 0) {
+            alertBox.className = "alert-box";
+            alertBox.innerText = "Attendere. Configurazione nodo corrente inedita.";
+            return;
+        }
+
+        let pS = (matrix[lastNode].S / matrix[lastNode].tot) * 100;
+        let pD = (matrix[lastNode].D / matrix[lastNode].tot) * 100;
+
+        let bestNode = pS > pD ? 'S' : (pD > pS ? 'D' : '=');
+        let confLevel = Math.max(pS, pD);
+
+        document.getElementById('dbPred').innerText = bestNode === 'S' ? 'SINISTRA' : (bestNode === 'D' ? 'DESTRA' : 'INCERTO');
+        document.getElementById('dbConf').innerText = confLevel.toFixed(1) + "%";
+
+        if (confLevel > 65) {
+            alertBox.className = "alert-box safe";
+            alertBox.innerHTML = `🔥 <strong>VULNERABILITÀ RNG TROVATA:</strong> Il generatore sta compensando. Dopo un [${lastNode}], la probabilità che il server generi [${bestNode}] è salita al ${confLevel.toFixed(1)}%. Segui l'algoritmo.`;
+        } else {
+            alertBox.className = "alert-box";
+            alertBox.innerHTML = "L'entropia del server è stabile (~50%). Nessun edge matematico rilevato al momento. Clicca per generare nuovi dati.";
+        }
+    }
+
+    // === SEQUENCE STREAK ANALYZER ===
+    function analizzaStriscia() {
+        let input = document.getElementById('strInput').value.trim();
+        let target = parseFloat(document.getElementById('strTarget').value);
+        if(!input) return;
+        let arr = input.split(/[\s,]+/).map(Number).filter(n => !isNaN(n));
+        if (arr.length === 0) return;
+
+        let probLoss = 1 - (0.97 / target);
+        let currStreak = 0;
+        for (let i = arr.length - 1; i >= 0; i--) { if (arr[i] < target) currStreak++; else break; }
+
+        let limit = Math.floor(Math.log(0.01) / Math.log(probLoss)); // 99%
+        let isSafe = currStreak >= limit - 1;
+
+        document.getElementById('sStreak').innerText = `${currStreak} Perdite Consecutive`;
+        document.getElementById('sBreak').innerText = isSafe ? "IMMINENTE" : "ATTESA";
+        
+        let alert = document.getElementById('outAlert');
+        alert.className = `alert-box ${isSafe ? 'safe' : ''}`;
+        alert.innerHTML = isSafe 
+            ? `🔥 <strong>ROTTURA STATISTICA:</strong> La varianza locale è satura. Le probabilità di un rimbalzo positivo sono al picco massimo. ENTRA A MERCATO ORA.`
+            : `⚠️ Varianza accumulata insufficiente. Il limite calcolato è ${limit}. Non puntare capitale reale finché non si verificano altre ${Math.max(0, limit - currStreak)} perdite.`;
+            
+        document.getElementById('calcHUD').style.display = 'block';
+    }
+
+    // === PLINKO BINOMIAL ===
+    function calcolaPlinko() {
+        function fact(n) { return n<=1 ? 1 : n * fact(n-1); }
+        function comb(n, k) { return fact(n) / (fact(k) * fact(n-k)); }
+        
+        let b = parseFloat(document.getElementById('pBank').value);
+        let n = parseInt(document.getElementById('pRows').value);
+        
+        let probCenter = comb(n, n/2) * Math.pow(0.5, n);
+        let probEdge = (comb(n, 0) + comb(n, 1) + comb(n, n-1) + comb(n, n)) * Math.pow(0.5, n);
+
+        let bet = b * 0.01; // Gestione ferrea
+        
+        document.getElementById('pLoss').innerText = (probCenter * 100).toFixed(2) + "%";
+        document.getElementById('pWin').innerText = (probEdge * 100).toFixed(4) + "%";
+        document.getElementById('pBet').innerText = `€ ${bet.toFixed(2)}`;
+        
+        document.getElementById('outAlert').innerHTML = `<strong>AVVISO QUANTITATIVO:</strong> La Distribuzione Binomiale concentra l'RTP al centro. Hai bisogno di capitale per sopportare circa ${Math.ceil(1/probEdge)} palline prima di colpire un moltiplicatore estremo. Usa la puntata base indicata.`;
+        document.getElementById('calcHUD').style.display = 'block';
+    }
+
+    // === STANDARD ===
+    function calcolaStandard() {
+        let b = parseFloat(document.getElementById('cBank').value);
+        if (isNaN(b) || b <= 0) return;
+
+        let prob = 0;
+        if (currentGameId === 'mines') {
+            let tot = parseInt(document.getElementById('cTot').value), bombe = parseInt(document.getElementById('cB').value), tgt = parseInt(document.getElementById('cTgt').value);
+            prob = 1; for(let i=0; i<tgt; i++) prob *= (tot-bombe-i)/(tot-i);
+        } else {
+            let m = parseFloat(document.getElementById('cM').value);
+            prob = 0.97 / m; if(prob>1) prob=1;
+        }
+
+        let limit = Math.ceil(Math.log(0.05) / Math.log(prob === 1 ? 0.99 : 1 - prob));
+        let bet = b / limit;
+
+        document.getElementById('outProb').innerText = (prob * 100).toFixed(2) + "%";
+        document.getElementById('outProb').className = `val ${prob > 0.4 ? 'good' : 'bad'}`;
+        document.getElementById('outBet').innerText = `€ ${bet.toFixed(2)}`;
+        document.getElementById('outRuin').innerText = `Max ${limit} Errori`;
+        
+        let alert = document.getElementById('outAlert');
+        alert.className = `alert-box ${prob > 0.3 ? 'safe' : ''}`;
+        alert.innerHTML = prob < 0.2 ? "⚠️ Volatilità estrema. Rispetta la puntata calcolata per non bruciare il conto." : "✅ Vantaggio bilanciato. Procedi con il piano.";
+        document.getElementById('calcHUD').style.display = 'block';
+    }
+</script>
+
+</body>
+</html>
