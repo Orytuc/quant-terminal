@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Quantum Edge OS | OT Holding Fintech</title>
+    <style>
+        /* === RESET & VARIABLES === */
+        :root { 
+            --bg: #02040a; --panel: #0d1117; --panel-glass: rgba(13, 17, 23, 0.8);
+            --border: #30363d; --accent: #00f0ff; --accent-glow: rgba(0, 240, 255, 0.4);
+            --premium: #bf87ff; --basic: #8b949e;
+            --success: #238636; --danger: #da3633; --warn: #d29922;
+            --text: #c9d1d9; --text-muted: #8b949e;
+            --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body, html { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            background: var(--bg); color: var(--text); 
+            font-family: var(--font-main); overflow: hidden; 
+        }
+        
+        #app-container { 
+            width: 100vw; height: 100vh; position: relative; 
+            display: flex; flex-direction: column; 
+        }
+
+        .view { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: var(--bg); display: none; flex-direction: column; 
+            overflow-y: auto; padding-bottom: 30px; 
+            animation: slideIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        .view.active { display: flex; }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+
+        /* === SPLASH SCREEN (L'Occhio) === */
+        #view-splash { justify-content: center; align-items: center; background: #010409; z-index: 9999; }
+        .logo-box { text-align: center; animation: float 3s ease-in-out infinite; }
+        .logo-icon { font-size: 90px; filter: drop-shadow(0 0 30px var(--accent)); margin-bottom: 10px; }
+        .logo-text { font-size: 38px; font-weight: 900; color: #fff; letter-spacing: 6px; margin: 0; text-transform: uppercase; }
+        .logo-text span { color: var(--accent); }
+        .logo-sub { color: var(--basic); font-size: 11px; letter-spacing: 8px; margin-top: 5px; font-family: monospace; }
+        @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-15px); } 100% { transform: translateY(0px); } }
+
+        /* === GLOBAL HEADER === */
+        .header { 
+            background: rgba(2, 4, 10, 0.85); backdrop-filter: blur(12px); 
+            padding: 20px; border-bottom: 1px solid var(--border); 
+            display: flex; justify-content: space-between; align-items: center; 
+            position: sticky; top: 0; z-index: 100;
+        }
+        .header-title { margin: 0; font-size: 18px; font-weight: 900; letter-spacing: 1px; color: #fff; display: flex; align-items: center; gap: 8px;}
+        .lang-btn { background: var(--panel); border: 1px solid var(--border); color: var(--text); padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .btn-back { background: transparent; color: var(--text); border: 1px solid var(--border); padding: 8px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        
+        .content { padding: 20px; flex: 1; }
+        
+        /* === UI CARDS & INPUTS === */
+        .card { 
+            background: linear-gradient(145deg, var(--panel), #161b22); 
+            border: 1px solid var(--border); border-radius: 12px; 
+            padding: 20px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); 
+        }
+        .card-title { font-size: 14px; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; margin: 0 0 15px 0; border-bottom: 1px dashed var(--border); padding-bottom: 10px; }
+        
+        .input-group { margin-bottom: 15px; }
+        label { display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px; }
+        input, select, textarea { 
+            width: 100%; background: #010409; color: #fff; border: 1px solid var(--border); 
+            padding: 15px; font-size: 16px; border-radius: 8px; outline: none; 
+            font-family: monospace; font-weight: bold; transition: 0.2s; 
+        }
+        input:focus, textarea:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 10px var(--accent-glow); }
+        textarea { min-height: 90px; resize: none; line-height: 1.5; }
+        
+        .btn { 
+            width: 100%; background: var(--accent); color: #000; border: none; 
+            padding: 18px; font-size: 15px; font-weight: 900; border-radius: 8px; 
+            text-transform: uppercase; letter-spacing: 1px; cursor: pointer; 
+            margin-top: 10px; box-shadow: 0 0 15px var(--accent-glow); transition: 0.1s; 
+        }
+        .btn:active { transform: scale(0.97); }
+
+        /* === LOBBY GRID === */
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .game-tile { 
+            background: var(--panel); border: 1px solid var(--border); 
+            padding: 25px 10px; border-radius: 12px; text-align: center; 
+            position: relative; transition: all 0.2s; 
+        }
+        .game-tile.locked { opacity: 0.4; filter: grayscale(100%); }
+        .g-icon { font-size: 40px; margin-bottom: 12px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); }
+        .g-name { font-size: 12px; font-weight: 900; text-transform: uppercase; }
+        .badge { position: absolute; top: 8px; right: 8px; font-size: 9px; padding: 4px 6px; border-radius: 4px; font-weight: bold; }
+        .badge.prem { background: var(--premium); color: #000; }
+        .badge.base { background: var(--border); color: #fff; }
+
+        /* === STRATEGY HUD === */
+        .hud { background: #000; border-radius: 12px; padding: 20px; display: none; margin-top: 20px; border: 1px solid var(--accent); box-shadow: 0 0 20px var(--accent-glow); }
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .stat-box { background: var(--panel); border: 1px solid var(--border); padding: 15px; border-radius: 8px; text-align: center; }
+        .stat-box .title { font-size: 10px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 5px; }
+        .stat-box .val { font-size: 18px; font-weight: 900; font-family: monospace; color: #fff; }
+        
+        .strategy-box { border-radius: 12px; padding: 20px; text-align: center; margin-top: 15px; }
+        .strategy-box.danger { border: 2px solid var(--danger); background: rgba(218, 54, 51, 0.1); }
+        .strategy-box.success { border: 2px solid var(--success); background: rgba(35, 134, 54, 0.1); }
+        .strategy-box.warn { border: 2px solid var(--warn); background: rgba(210, 153, 34, 0.1); }
+        
+        .strategy-box .command { font-size: 18px; font-weight: 900; text-transform: uppercase; margin-bottom: 10px; letter-spacing: 1px; color: #fff; }
+        .strategy-box .desc { font-size: 13px; line-height: 1.5; color: var(--text); }
+
+        /* === SQUID PATH GRID === */
+        .path-grid { display: grid; gap: 5px; margin-top: 15px; }
+        .path-row { display: grid; gap: 5px; }
+        .path-step { padding: 12px 5px; text-align: center; font-weight: bold; font-size: 11px; border-radius: 6px; border: 1px solid var(--border); background: #010409; color: #555; }
+        .path-step.active { background: var(--accent); color: #000; box-shadow: 0 0 10px var(--accent-glow); border-color: var(--accent); }
+
+        /* === BLACKJACK BUTTONS === */
+        .bj-controls { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 15px; }
+        .bj-btn { padding: 15px; font-size: 18px; font-weight: 900; border: none; border-radius: 6px; cursor: pointer; color: #fff; }
+        .bj-plus { background: var(--success); } .bj-zero { background: var(--basic); } .bj-minus { background: var(--danger); }
+
+        /* === FOOTER === */
+        .footer { padding: 20px; font-size: 10px; color: var(--text-muted); text-align: justify; border-top: 1px solid var(--border); background: #010409; line-height: 1.5; margin-top: 20px; }
+        .company { text-align: center; font-weight: bold; margin-top: 15px; color: var(--basic); letter-spacing: 1px; }
+    </style>
+</head>
+<body>
+
+<div id="app-container">
+
+    <div id="view-splash" class="view active">
+        <div class="logo-box">
+            <div class="logo-icon">👁️‍🗨️</div>
+            <h1 class="logo-text">QUANTUM<span>EDGE</span></h1>
+            <div class="logo-sub">FINTECH ANALYTICAL CORE</div>
+        </div>
+    </div>
+
+    <div id="view-login" class="view">
+        <div class="header" style="justify-content: flex-end;">
+            <button class="lang-btn" onclick="toggleLang()" id="langToggle">🇮🇹 IT</button>
+        </div>
+        <div class="content" style="display: flex; flex-direction: column; justify-content: center; height: 100%;">
+            <div style="text-align: center; margin-bottom: 40px;">
+                <div style="font-size: 60px; filter: drop-shadow(0 0 20px var(--accent)); margin-bottom: 15px;">👁️‍🗨️</div>
+                <h1 style="color: #fff; font-size: 26px; margin: 0; letter-spacing: 3px;" data-i18n="auth_title">AUTENTICAZIONE</h1>
+                <p style="color: var(--accent); font-size: 11px; font-family: monospace;" data-i18n="auth_sub">SISTEMA DI ACCESSO PRIVATO</p>
+            </div>
+            
+            <div class="card">
+                <input type="password" id="licenseKey" placeholder="PREM-BASIC321! / PREM-BOSS123!" style="text-align: center; font-size: 13px; letter-spacing: 2px;">
+                <button class="btn" onclick="login()" data-i18n="btn_unlock">Sblocca Terminale</button>
+                <p id="loginErr" style="color: var(--danger); font-size: 12px; text-align: center; display: none; margin-top: 15px; font-weight: bold;" data-i18n="err_denied">ACCESSO RIFIUTATO</p>
+            </div>
+            
+            <div class="footer" style="background: transparent; border: none; text-align: center;">
+                <div class="company">© 2026 OT HOLDING LTD FINTECH</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-lobby" class="view">
+        <div class="header">
+            <h1 class="header-title"><span>💠</span> MAINFRAME</h1>
+            <div id="userBadge" class="badge"></div>
+        </div>
+        <div class="content">
+            <p style="font-size: 12px; color: var(--text-muted); margin-top: 0;" data-i18n="lobby_desc">Seleziona il motore di calcolo statistico:</p>
+            <div class="grid" id="gamesContainer"></div>
+        </div>
+        <div class="footer">
+            <strong data-i18n="disc_title">DISCLAIMER:</strong> <span data-i18n="disc_text">Il software è uno strumento di analisi matematica della varianza. Non garantisce vincite. L'utente si assume la responsabilità dell'uso.</span>
+            <div class="company">OT HOLDING LTD FINTECH</div>
+        </div>
+    </div>
+
+    <div id="view-module" class="view">
+        <div class="header">
+            <h1 class="header-title" id="modTitle">MODULO</h1>
+            <button class="btn-back" onclick="naviga('view-lobby')" data-i18n="btn_close">X CHIUDI</button>
+        </div>
+        <div class="content">
+            <div id="dynamicForm"></div>
+            <div id="modHUD" class="hud"></div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // =========================================
+    // I18N (DIZIONARIO LINGUE)
+    // =========================================
+    const dict = {
+        it: {
+            auth_title: "AUTENTICAZIONE", auth_sub: "SISTEMA DI ACCESSO PRIVATO", btn_unlock: "SBLOCCA TERMINALE",
+            err_denied: "ACCESSO RIFIUTATO", lobby_desc: "Seleziona il motore di calcolo statistico:",
+            disc_title: "DISCLAIMER:", disc_text: "Il software è uno strumento di analisi matematica della varianza. Non garantisce vincite. L'utente si assume la responsabilità dell'uso.",
+            btn_close: "X CHIUDI", btn_calc: "ELABORA STRATEGIA", lbl_bank: "Capitale (€)",
+            lbl_target: "Target Cashout", lbl_history: "Storico Voli",
+            lbl_steps: "Passi Totali", lbl_diff: "Livello di Difficoltà",
+            lbl_tot: "Caselle Totali", lbl_bombs: "Bombe Nascoste", lbl_tgt: "Obiettivo Caselle"
+        },
+        en: {
+            auth_title: "AUTHENTICATION", auth_sub: "PRIVATE ACCESS SYSTEM", btn_unlock: "UNLOCK TERMINAL",
+            err_denied: "ACCESS DENIED", lobby_desc: "Select statistical calculation engine:",
+            disc_title: "DISCLAIMER:", disc_text: "The software is a mathematical variance analysis tool. Does not guarantee wins. User assumes all responsibility.",
+            btn_close: "X CLOSE", btn_calc: "PROCESS STRATEGY", lbl_bank: "Bankroll (€)",
+            lbl_target: "Target Cashout", lbl_history: "Flight History",
+            lbl_steps: "Total Steps", lbl_diff: "Difficulty Level",
+            lbl_tot: "Total Tiles", lbl_bombs: "Hidden Bombs", lbl_tgt: "Target Tiles"
+        }
+    };
+    let lang = 'it';
+    function toggleLang() {
+        lang = lang === 'it' ? 'en' : 'it';
+        document.getElementById('langToggle').innerText = lang === 'it' ? '🇮🇹 IT' : '🇬🇧 EN';
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            let key = el.getAttribute('data-i18n');
+            if(dict[lang][key]) el.innerText = dict[lang][key];
+        });
+        if(currentGame) apriModulo(GIOCHI.find(g => g.id === currentGame)); // Ricarica il modulo nella lingua giusta
+    }
+    function t(key) { return dict[lang][key] || key; }
+
+    // =========================================
+    // SYSTEM INIT & DATABASE
+    // =========================================
+    window.onload = () => {
+        setTimeout(() => { document.getElementById('view-splash').style.opacity = '0'; setTimeout(() => naviga('view-login'), 300); }, 2000);
+    };
+
+    const CODES = { "PREM-BASIC321!": "basic", "PREM-BOSS123!": "premium" };
+    
+    const GIOCHI = [
+        // 4 BASIC
+        { id: "aviator", nome: "Crash Engine", icon: "✈️", tier: "basic", desc: "Varianza Crash" },
+        { id: "mines", nome: "Grid Sweeper", icon: "💣", tier: "basic", desc: "Ipergeometrica" },
+        { id: "plinko", nome: "Plinko Math", icon: "🔺", tier: "basic", desc: "Distribuzione Binomiale" },
+        { id: "dice", nome: "Dice Quant", icon: "🎲", tier: "basic", desc: "Probabilità Lineare" },
+        // 6 PREMIUM (Total 10)
+        { id: "squid", nome: "Path Generator", icon: "🌉", tier: "premium", desc: "Motore a Stati Finiti" },
+        { id: "blackjack", nome: "Live Blackjack", icon: "♠️", tier: "premium", desc: "Hi-Lo True Count" },
+        { id: "roulette", nome: "Roulette Tracker", icon: "🎡", tier: "premium", desc: "Tracciamento Settori" },
+        { id: "hilo", nome: "Hi-Lo Cards", icon: "🃏", tier: "premium", desc: "Calcolo Mazzo" },
+        { id: "spin", nome: "Spin Wheels", icon: "🎯", tier: "premium", desc: "Varianza Ruota" },
+        { id: "baccarat", nome: "Baccarat EV", icon: "🏦", tier: "premium", desc: "Banker Edge" }
+    ];
+
+    let userTier = null;
+    let currentGame = null;
+
+    // =========================================
+    // NAVIGATION & LOBBY
+    // =========================================
+    function naviga(viewId) {
+        document.querySelectorAll('.view').forEach(v => { v.classList.remove('active'); v.style.opacity = '1'; });
+        document.getElementById(viewId).classList.add('active');
+    }
+
+    function login() {
+        const key = document.getElementById('licenseKey').value.trim();
+        if (CODES[key]) {
+            userTier = CODES[key];
+            let badge = document.getElementById('userBadge');
+            badge.innerText = userTier === 'premium' ? '👑 PRO' : '👤 BASE';
+            badge.className = 'badge ' + (userTier === 'premium' ? 'prem' : 'base');
+            costruisciLobby();
+            naviga('view-lobby');
+        } else {
+            document.getElementById('loginErr').style.display = 'block';
+        }
+    }
+
+    function costruisciLobby() {
+        const container = document.getElementById('gamesContainer');
+        container.innerHTML = '';
+        GIOCHI.forEach(g => {
+            let locked = (userTier === 'basic' && g.tier === 'premium');
+            let btn = document.createElement('div');
+            btn.className = `game-tile ${locked ? 'locked' : ''}`;
+            btn.innerHTML = `
+                <div class="badge ${g.tier === 'premium' ? 'prem' : 'base'}">${g.tier.toUpperCase()}</div>
+                <div class="g-icon">${g.icon}</div>
+                <div class="g-name">${g.nome}</div>
+            `;
+            btn.onclick = () => locked ? alert(lang==='it'?"Richiede licenza PRO.":"Requires PRO license.") : apriModulo(g);
+            container.appendChild(btn);
+        });
+    }
+
+    // =========================================
+    // RENDER MODULI DINAMICI
+    // =========================================
+    let bjRC = 0, bjCards = 0; // Stats per Blackjack
+
+    function apriModulo(g) {
+        currentGame = g.id;
+        document.getElementById('modTitle').innerHTML = `<span>${g.icon}</span> ${g.nome}`;
+        document.getElementById('modHUD').style.display = 'none';
+        
+        const form = document.getElementById('dynamicForm');
+        let commonBank = `<div class="input-group"><label>${t('lbl_bank')}</label><input type="number" id="inpBank" value="100"></div>`;
+        let btnCalc = `<button class="btn" onclick="eseguiMotore()">${t('btn_calc')}</button>`;
+
+        if (g.id === 'aviator') {
+            form.innerHTML = `
+                <div class="card">
+                    <h2 class="card-title">${g.desc}</h2>
+                    <div class="input-group"><label>${t('lbl_history')} (es. 1.20 5.40 1.01...)</label><textarea id="inpHist" placeholder="1.20 1.50 1.01..."></textarea></div>
+                    <div class="input-group"><label>${t('lbl_target')}</label><input type="number" step="0.01" id="inpTgt" value="2.00"></div>
+                    ${commonBank} ${btnCalc}
+                </div>`;
+        } else if (g.id === 'squid') {
+            form.innerHTML = `
+                <div class="card">
+                    <h2 class="card-title">${g.desc}</h2>
+                    <div class="input-group"><label>${t('lbl_diff')}</label>
+                        <select id="inpDiff"><option value="easy">Easy (3x2)</option><option value="medium" selected>Medium (2x1)</option><option value="hard">Hard (3x1)</option><option value="extreme">Extreme (4x1)</option></select>
+                    </div>
+                    <div class="input-group"><label>${t('lbl_steps')}</label><input type="number" id="inpSteps" value="5"></div>
+                    ${commonBank} ${btnCalc}
+                </div>`;
+        } else if (g.id === 'mines') {
+            form.innerHTML = `
+                <div class="card">
+                    <h2 class="card-title">${g.desc}</h2>
+                    <div class="input-group"><label>${t('lbl_tot')}</label><input type="number" id="inpTot" value="25"></div>
+                    <div class="input-group"><label>${t('lbl_bombs')}</label><input type="number" id="inpBombs" value="3"></div>
+                    <div class="input-group"><label>${t('lbl_tgt')}</label><input type="number" id="inpTgt" value="4"></div>
+                    ${commonBank} ${btnCalc}
+                </div>`;
+        } else if (g.id === 'plinko') {
+            form.innerHTML = `
+                <div class="card">
+                    <h2 class="card-title">${g.desc}</h2>
+                    <div class="input-group"><label>Righe (Pins)</label><select id="inpPins"><option value="12">12</option><option value="14">14</option><option value="16">16</option></select></div>
+                    ${commonBank} ${btnCalc}
+                </div>`;
+        } else if (g.id === 'dice') {
+            form.innerHTML = `
+                <div class="card">
+                    <h2 class="card-title">${g.desc}</h2>
+                    <div class="input-group"><label>Win Chance % (es. 48.5)</label><input type="number" step="0.1" id="inpChance" value="48.5"></div>
+                    ${commonBank} ${btnCalc}
+                </div>`;
+        } else if (g.id === 'blackjack') {
+            bjRC = 0; bjCards = 0;
+            form.innerHTML = `
+                <div class="card">
+                    <h2 class="card-title">${g.desc}</h2>
+                    <p style="font-size:11px; color:var(--text-muted); margin-top:0;">Traccia le carte live.</p>
+                    <div class="input-group"><label>Mazzi nel Sabot (Decks)</label><select id="bjDecks"><option value="6">6 Mazzi</option><option value="8">8 Mazzi</option></select></div>
+                    <div class="hud" style="display: block; margin-top: 15px;">
+                        <div class="stat-grid" style="margin-bottom:0;">
+                            <div class="stat-box"><div class="title">Running Count</div><div id="bjRC_val" class="val">0</div></div>
+                            <div class="stat-box"><div class="title">True Count</div><div id="bjTC_val" class="val" style="color:var(--accent);">0</div></div>
+                        </div>
+                    </div>
+                    <div class="bj-controls">
+                        <button class="bj-btn bj-plus" onclick="aggiornaBJ(1)">+1 <span style="font-size:10px">(2-6)</span></button>
+                        <button class="bj-btn bj-zero" onclick="aggiornaBJ(0)">0 <span style="font-size:10px">(7-9)</span></button>
+                        <button class="bj-btn bj-minus" onclick="aggiornaBJ(-1)">-1 <span style="font-size:10px">(10-A)</span></button>
+                    </div>
+                    <div id="bjAlert" class="strategy-box warn" style="margin-top:15px; padding:15px;"><div class="command">NEUTRO</div><div class="desc">Gioca la strategia di base.</div></div>
+                </div>`;
+        } else {
+            // Modulo Generico per gli altri Premium (Roulette, HiLo, Spin, Baccarat)
+            form.innerHTML = `
+                <div class="card">
+                    <h2 class="card-title">${g.desc}</h2>
+                    <p style="font-size:11px; color:var(--text-muted); margin-top:0;">Modulo avanzato di calibrazione Edge.</p>
+                    <div class="input-group"><label>Probabilità stimata di Vittoria (%)</label><input type="number" id="inpProb" value="45.0"></div>
+                    <div class="input-group"><label>Moltiplicatore Payout (es. 2 per raddoppio)</label><input type="number" step="0.1" id="inpPayout" value="2.0"></div>
+                    ${commonBank} ${btnCalc}
+                </div>`;
+        }
+        naviga('view-module');
+    }
+
+    // =========================================
+    // MOTORI MATEMATICI & STRATEGIE
+    // =========================================
+    
+    function aggiornaBJ(v) {
+        bjRC += v; bjCards++;
+        let decks = parseFloat(document.getElementById('bjDecks').value);
+        let rem = Math.max(0.5, decks - (bjCards / 52));
+        let tc = bjRC / rem;
+        
+        document.getElementById('bjRC_val').innerText = bjRC;
+        document.getElementById('bjTC_val').innerText = tc.toFixed(1);
+        
+        let alert = document.getElementById('bjAlert');
+        if(tc >= 2) {
+            alert.className = "strategy-box success";
+            alert.innerHTML = `<div class="command">MAZZO CALDO</div><div class="desc">Vantaggio Giocatore. Alza la puntata.</div>`;
+        } else if(tc <= -1) {
+            alert.className = "strategy-box danger";
+            alert.innerHTML = `<div class="command">MAZZO FREDDO</div><div class="desc">Vantaggio Banco. Punta il minimo o attendi.</div>`;
+        } else {
+            alert.className = "strategy-box warn";
+            alert.innerHTML = `<div class="command">NEUTRO</div><div class="desc">Gioca la strategia di base.</div>`;
+        }
+    }
+
+    function eseguiMotore() {
+        let bank = parseFloat(document.getElementById('inpBank').value);
+        if (isNaN(bank) || bank <= 0) return;
+
+        let prob = 0, bet = 0, command = "", desc = "", boxClass = "warn", pathHTML = "";
+
+        if (currentGame === 'aviator') {
+            let hist = document.getElementById('inpHist').value.trim();
+            let tgt = parseFloat(document.getElementById('inpTgt').value);
+            if (!hist || isNaN(tgt)) return;
+            
+            let voli = hist.split(/[\s,]+/).map(Number).filter(n => !isNaN(n));
+            if (voli.length === 0) return;
+
+            prob = 0.97 / tgt;
+            let streak = 0;
+            for (let i = voli.length - 1; i >= 0; i--) { if (voli[i] < tgt) streak++; else break; }
+            let limit = Math.ceil(Math.log(0.05) / Math.log(1 - prob));
+
+            if (streak === 0) {
+                command = "ASPETTA (NO BET)"; desc = "Target appena colpito. Reset RNG in corso. Pericolo crash."; boxClass = "danger"; bet = 0;
+            } else if (streak >= limit - 1) {
+                command = "ENTRA A MERCATO"; desc = `Varianza satura (${streak} perdite). Pressione statistica al picco.`; boxClass = "success"; bet = bank / 4;
+            } else {
+                command = "MONITORA"; desc = `Striscia a ${streak}. Attendi altri ${Math.max(1, limit - streak)} voli prima di entrare.`; bet = 0;
+            }
+        } 
+        
+        else if (currentGame === 'squid') {
+            let diff = document.getElementById('inpDiff').value;
+            let steps = parseInt(document.getElementById('inpSteps').value);
+            let tOpt = 2, sOpt = 1;
+            if (diff === 'easy') { tOpt = 3; sOpt = 2; } else if (diff === 'hard') { tOpt = 3; sOpt = 1; } else if (diff === 'extreme') { tOpt = 4; sOpt = 1; }
+            
+            prob = Math.pow(sOpt/tOpt, steps);
+            let limit = Math.ceil(Math.log(0.05) / Math.log(1 - prob));
+            bet = bank / limit;
+
+            pathHTML = `<div class="path-grid">`;
+            for (let i = 1; i <= steps; i++) {
+                pathHTML += `<div class="path-row" style="grid-template-columns: repeat(${tOpt}, 1fr);">`;
+                let safe = []; while(safe.length < sOpt) { let r = Math.floor(Math.random() * tOpt); if(safe.indexOf(r) === -1) safe.push(r); }
+                for (let j = 0; j < tOpt; j++) pathHTML += `<div class="path-step ${safe.includes(j) ? 'active' : ''}">${safe.includes(j) ? 'OK' : ''}</div>`;
+                pathHTML += `</div>`;
+            }
+            pathHTML += `</div>`;
+            
+            command = "SEGUI LA TRACCIA"; desc = `Probabilità ${(prob*100).toFixed(2)}%. Rispetta la mappa visiva anti-tilt qui sotto per sopportare la varianza.<br>${pathHTML}`; boxClass = "success";
+        } 
+        
+        else if (currentGame === 'mines') {
+            let tot = parseInt(document.getElementById('inpTot').value), bombs = parseInt(document.getElementById('inpBombs').value), tgt = parseInt(document.getElementById('inpTgt').value);
+            if (tgt + bombs > tot) return;
+            prob = 1; for(let i=0; i<tgt; i++) prob *= (tot-bombs-i)/(tot-i);
+            
+            let limit = Math.ceil(Math.log(0.05) / Math.log(prob === 1 ? 0.99 : 1 - prob));
+            bet = bank / limit;
+            
+            if (prob > 0.4) { command = "PIANO APPROVATO"; desc = "Vantaggio bilanciato. Apri e incassa."; boxClass = "success"; } 
+            else { command = "RISCHIO ECCESSIVO"; desc = "L'RNG esploderà. Riduci il target."; boxClass = "danger"; }
+        } 
+        
+        else if (currentGame === 'plinko') {
+            let n = parseInt(document.getElementById('inpPins').value);
+            function fact(num) { return num<=1 ? 1 : num * fact(num-1); }
+            let comb = (n, k) => fact(n) / (fact(k) * fact(n-k));
+            prob = (comb(n, 0) + comb(n, 1) + comb(n, n-1) + comb(n, n)) * Math.pow(0.5, n); // Prob Estremi
+            bet = bank * 0.01;
+            command = "GESTIONE VARIANZA"; desc = `Il Pascal Triangle concentra i tiri al centro. Per colpire i lati devi assorbire i colpi a vuoto. Usa puntata minima.`; boxClass = "warn";
+        } 
+        
+        else if (currentGame === 'dice') {
+            prob = parseFloat(document.getElementById('inpChance').value) / 100;
+            let limit = Math.ceil(Math.log(0.05) / Math.log(prob === 1 ? 0.99 : 1 - prob));
+            bet = bank / limit;
+            command = "PROGRESSIONE LINEARE"; desc = "Usa il bet calcolato per reggere il drawdown statistico."; boxClass = prob > 0.4 ? "success" : "warn";
+        }
+        
+        else {
+            // Generico Premium
+            prob = parseFloat(document.getElementById('inpProb').value) / 100;
+            let payout = parseFloat(document.getElementById('inpPayout').value);
+            let edge = (prob * payout) - 1;
+            
+            if (edge > 0) {
+                bet = bank * ((edge / (payout - 1)) * 0.25); // Quarter Kelly
+                command = "EDGE POSITIVO"; desc = "Situazione profittevole. Usa il Quarter-Kelly per ottimizzare."; boxClass = "success";
+            } else {
+                bet = bank * 0.01;
+                command = "EV NEGATIVO"; desc = "Svantaggio matematico. Punta il minimo vitale (1%)."; boxClass = "danger";
+            }
+        }
+
+        // Output Render
+        const hud = document.getElementById('modHUD');
+        hud.innerHTML = `
+            <div class="stat-grid">
+                <div class="stat-box"><div class="title">Probabilità</div><div class="val">${(prob*100).toFixed(2)}%</div></div>
+                <div class="stat-box"><div class="title">Puntata Ottimale</div><div class="val" style="color:var(--accent);">€ ${bet.toFixed(2)}</div></div>
+            </div>
+            <div class="strategy-box ${boxClass}">
+                <div class="command">${command}</div><div class="desc">${desc}</div>
+            </div>`;
+        hud.style.display = 'block';
+        hud.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+</script>
+
+</body>
+</html>
